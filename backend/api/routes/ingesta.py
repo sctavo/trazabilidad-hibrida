@@ -1,5 +1,3 @@
-# Aquí irá la lógica de PyMuPDF
-
 import fitz  # PyMuPDF
 from fastapi import APIRouter, UploadFile, HTTPException
 
