@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api.routes import ingesta
+from api.routes import ingesta, generacion
 
 app = FastAPI(title="Trazabilidad IA - Backend")
 
@@ -13,8 +13,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Inyectamos el módulo de ingesta
-app.include_router(ingesta.router, prefix="/api/v1")
+# Inyectación de modulos de rutas en la aplicación FastAPI
+app.include_router(ingesta.router, prefix="/api/v1") # Inyecta el módulo de ingesta
+app.include_router(generacion.router, prefix="/api/v1")  # Inyecta el módulo de generación
 
 @app.get("/")
 async def root():
