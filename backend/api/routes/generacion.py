@@ -5,12 +5,15 @@ from api.schemas import (
     GenerarHistoriasRequest, 
     HistoriasUsuarioResponse,
     RegenerarCriteriosRequest,
-    CriteriosResponse
+    CriteriosResponse,
+    GenerarTareasRequest,
+    TareasResponse
 )
 from api.services.llm_service import (
     extraer_requisitos_llm, 
     derivar_historias_usuario_llm,
-    regenerar_criterios_hu_llm
+    regenerar_criterios_hu_llm,
+    derivar_tareas_llm
 )
 
 router = APIRouter(prefix="/generar", tags=["Motor de Generación IA"])
@@ -29,3 +32,8 @@ async def generar_historias_usuario(solicitud: GenerarHistoriasRequest):
 async def generar_criterios(solicitud: RegenerarCriteriosRequest):
     criterios = await regenerar_criterios_hu_llm(solicitud.model_dump())
     return {"criterios_aceptacion": criterios}
+
+@router.post("/tareas/", response_model=TareasResponse)
+async def generar_tareas(solicitud: GenerarTareasRequest):
+    tareas = await derivar_tareas_llm([hu.model_dump() for hu in solicitud.historias_usuario])
+    return {"tareas": tareas}

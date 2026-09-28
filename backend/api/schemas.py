@@ -1,10 +1,10 @@
 from pydantic import BaseModel
 from typing import List, Literal
 
-# --- Esquema de Requisito de Usuario (RU) formalizado ---
+# --- 1. Requisitos de Usuario (RU) ---
 class RequisitoItem(BaseModel):
     id: str  # Ej: "RU1", "RU2"
-    nombre: str  # Ej: "Registrar Vehículo"
+    nombre: str
     descripcion: str
     fuente: str = "Documento base"
     estabilidad: Literal["Transable", "Intransable"] = "Transable"
@@ -16,10 +16,10 @@ class RequisitosResponse(BaseModel):
 class TextoEntradaRequest(BaseModel):
     texto: str
 
-# --- Esquemas de Historias de Usuario ---
+# --- 2. Historias de Usuario (HU) ---
 class HistoriaUsuarioItem(BaseModel):
-    id: str
-    rf_origen: str  # ID del RU origen (ej: "RU1")
+    id: str  # Ej: "HU-01"
+    rf_origen: str  # ID del RU padre (ej: "RU1")
     titulo: str
     rol: str
     quiero: str
@@ -32,7 +32,7 @@ class HistoriasUsuarioResponse(BaseModel):
 class GenerarHistoriasRequest(BaseModel):
     requisitos: List[RequisitoItem]
 
-# --- Esquema para regenerar Criterios de Aceptación con IA ---
+# --- 3. Regeneración de Criterios con IA ---
 class RegenerarCriteriosRequest(BaseModel):
     id: str
     titulo: str
@@ -42,3 +42,18 @@ class RegenerarCriteriosRequest(BaseModel):
 
 class CriteriosResponse(BaseModel):
     criterios_aceptacion: List[str]
+
+# --- 4. Tareas Técnicas (TSK) ---
+class TareaItem(BaseModel):
+    id: str  # Ej: "TSK-01"
+    hu_origen: str  # ID de la HU padre (ej: "HU-01")
+    titulo: str
+    descripcion: str
+    tipo: Literal["Frontend", "Backend", "Base de Datos", "Pruebas", "DevOps"]
+    estimacion_horas: int
+
+class TareasResponse(BaseModel):
+    tareas: List[TareaItem]
+
+class GenerarTareasRequest(BaseModel):
+    historias_usuario: List[HistoriaUsuarioItem]
