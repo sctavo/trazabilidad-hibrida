@@ -1,15 +1,27 @@
 export interface RequisitoItem {
-  id: string;
+  id: string; // Ej: "RU1"
+  nombre: string; // Ej: "Registrar Vehículo"
   descripcion: string;
-  prioridad: "Alta" | "Media" | "Baja";
+  fuente: string;
+  estabilidad: "Transable" | "Intransable";
+  tipo: "Funcional" | "No Funcional";
 }
 
 export interface HistoriaUsuarioItem {
-  id: string;               // Ej: "HU-01"
-  rf_origen: string;        // Ej: "RF01" (Trazabilidad jerárquica RF20)
+  id: string;
+  rf_origen: string; // Enlace al RU padre (ej: "RU1")
   titulo: string;
-  rol: string;              // "Como [rol]..."
-  quiero: string;           // "quiero [acción]..."
-  para: string;             // "para [beneficio]..."
+  rol: string;
+  quiero: string;
+  para: string;
   criterios_aceptacion: string[];
+}
+
+export interface TareaItem {
+  id: string;
+  hu_origen: string;
+  titulo: string;
+  descripcion: string;
+  tipo: "Frontend" | "Backend" | "Base de Datos" | "Pruebas" | "DevOps";
+  estimacion_horas: number;
 }

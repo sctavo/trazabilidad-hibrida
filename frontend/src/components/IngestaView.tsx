@@ -1,14 +1,12 @@
 import React, { useState, useRef } from "react";
-import type { RequisitoItem } from "../types";
 
 interface IngestaViewProps {
-  onGenerarExitoso: (requisitos: RequisitoItem[]) => void;
+  onSolicitarGeneracion: (texto: string) => void;
 }
 
-export const IngestaView: React.FC<IngestaViewProps> = ({ onGenerarExitoso }) => {
+export const IngestaView: React.FC<IngestaViewProps> = ({ onSolicitarGeneracion }) => {
   const [tab, setTab] = useState<"archivo" | "manual">("archivo");
   const [loadingArchivo, setLoadingArchivo] = useState(false);
-  const [loadingGeneracion, setLoadingGeneracion] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
 
@@ -62,34 +60,6 @@ export const IngestaView: React.FC<IngestaViewProps> = ({ onGenerarExitoso }) =>
     setTextoBase(textoManual);
   };
 
-  // Llamada al motor LLM de FastAPI
-  const handleLlamarLLM = async () => {
-    if (!textoBase.trim()) return;
-
-    setLoadingGeneracion(true);
-    setError(null);
-
-    try {
-      const response = await fetch("http://localhost:8000/api/v1/generar/requisitos/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ texto: textoBase }),
-      });
-
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.detail || "Error al generar requisitos con el LLM");
-      }
-
-      const data = await response.json();
-      onGenerarExitoso(data.requisitos);
-    } catch (err: any) {
-      setError(err.message || "Ocurrió un error al invocar la API de IA");
-    } finally {
-      setLoadingGeneracion(false);
-    }
-  };
-
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6">
       <div className="flex border-b border-slate-200 bg-white rounded-t-xl px-4 pt-2">
@@ -136,7 +106,7 @@ export const IngestaView: React.FC<IngestaViewProps> = ({ onGenerarExitoso }) =>
           </div>
           <h3 className="text-base font-semibold text-slate-800">Carga o arrastra el documento fuente</h3>
           <p className="text-xs text-slate-500 mt-1 mb-4">Formatos válidos: PDF o TXT</p>
-          
+
           <input
             ref={inputRef}
             type="file"
@@ -211,11 +181,10 @@ export const IngestaView: React.FC<IngestaViewProps> = ({ onGenerarExitoso }) =>
 
           <div className="flex justify-end pt-2">
             <button
-              disabled={loadingGeneracion}
-              onClick={handleLlamarLLM}
-              className="px-5 py-2.5 bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white text-xs font-semibold rounded-lg shadow-sm transition flex items-center gap-2"
+              onClick={() => onSolicitarGeneracion(textoBase)}
+              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm transition flex items-center gap-2"
             >
-              <span>{loadingGeneracion ? "Derivando requisitos con Gemini..." : "Generar Requisitos con IA (Gemini)"}</span>
+              <span>Generar Requisitos de Usuario (RU) con IA</span>
               <span>→</span>
             </button>
           </div>
