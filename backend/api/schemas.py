@@ -57,3 +57,27 @@ class TareasResponse(BaseModel):
 
 class GenerarTareasRequest(BaseModel):
     historias_usuario: List[HistoriaUsuarioItem]
+
+# ------------------------------Esquemas de Autenticación ------------------------
+class UsuarioRegistroRequest(BaseModel):
+    nombre: str
+    email: str
+    password: str
+
+class UsuarioLoginRequest(BaseModel):
+    email: str
+    password: str
+
+class UsuarioResponse(BaseModel):
+    id: str
+    nombre: str
+    email: str
+    rol: str
+
+    class Config:
+        from_attributes = True
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str
+    usuario: UsuarioResponse
