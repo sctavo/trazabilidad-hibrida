@@ -1,5 +1,8 @@
 from pydantic import BaseModel
+from typing import Optional
 from typing import List, Literal
+import uuid
+from datetime import datetime
 
 # --- 1. Requisitos de Usuario (RU) ---
 class RequisitoItem(BaseModel):
@@ -81,3 +84,35 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str
     usuario: UsuarioResponse
+
+# --- Esquemas de Persistencia de Proyectos  ---
+class GuardarProyectoRequest(BaseModel):
+    nombre: str
+    descripcion: Optional[str] = None
+    etapa_actual: int
+    texto_documento: Optional[str] = None
+    nombre_archivo: Optional[str] = "Entrada directa"
+    requisitos: List[RequisitoItem] = []
+    historias_usuario: List[HistoriaUsuarioItem] = []
+    tareas: List[TareaItem] = []
+
+class ProyectoResumenResponse(BaseModel):
+    id: str
+    nombre: str
+    descripcion: Optional[str]
+    etapa_actual: int
+    creado_en: datetime
+
+    class Config:
+        from_attributes = True
+
+class ProyectoDetalleResponse(BaseModel):
+    id: str
+    nombre: str
+    descripcion: Optional[str]
+    etapa_actual: int
+    texto_documento: Optional[str]
+    nombre_archivo: Optional[str]
+    requisitos: List[RequisitoItem]
+    historias_usuario: List[HistoriaUsuarioItem]
+    tareas: List[TareaItem]

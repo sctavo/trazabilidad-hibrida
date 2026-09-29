@@ -5,7 +5,7 @@ from sqlalchemy import text
 
 from database import engine, get_db, Base
 import models  # Importa los modelos ORM
-from api.routes import ingesta, generacion, auth
+from api.routes import ingesta, generacion, auth, proyectos
 
 # Crea las tablas en PostgreSQL si no existen al iniciar la app
 Base.metadata.create_all(bind=engine)
@@ -22,6 +22,7 @@ app.add_middleware(
 
 # Registro de enrutadores
 app.include_router(auth.router, prefix="/api/v1")
+app.include_router(proyectos.router, prefix="/api/v1")
 app.include_router(ingesta.router, prefix="/api/v1")
 app.include_router(generacion.router, prefix="/api/v1")
 
