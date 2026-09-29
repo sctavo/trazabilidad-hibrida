@@ -33,8 +33,8 @@ def test_ingesta_formato_no_valido():
     assert response.status_code == 400
     assert "Formato no soportado" in response.json()["detail"]
 
-def test_generar_requisitos_formato_pydantic():
-    """Prueba básica del endpoint de generación con esquema estricto"""
+def test_generar_requisitos_formato_pydantic_ru():
+    """Prueba del endpoint de generación con el esquema formal de Requisitos de Usuario (RU)"""
     payload = {"texto": "El sistema debe permitir gestionar usuarios analistas."}
     response = client.post("/api/v1/generar/requisitos/", json=payload)
     
@@ -45,5 +45,8 @@ def test_generar_requisitos_formato_pydantic():
     if len(datos["requisitos"]) > 0:
         req = datos["requisitos"][0]
         assert "id" in req
+        assert "nombre" in req
         assert "descripcion" in req
-        assert req["prioridad"] in ["Alta", "Media", "Baja"]
+        assert "fuente" in req
+        assert req["estabilidad"] in ["Transable", "Intransable"]
+        assert req["tipo"] in ["Funcional", "No Funcional"]
