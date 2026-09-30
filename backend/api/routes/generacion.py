@@ -7,8 +7,11 @@ from api.schemas import (
     RegenerarCriteriosRequest,
     CriteriosResponse,
     GenerarTareasRequest,
-    TareasResponse
+    TareasResponse,
+    RequisitoItem,
+    HistoriaUsuarioItem
 )
+
 from api.services.llm_service import (
     extraer_requisitos_llm, 
     derivar_historias_usuario_llm,
@@ -36,4 +39,16 @@ async def generar_criterios(solicitud: RegenerarCriteriosRequest):
 @router.post("/tareas/", response_model=TareasResponse)
 async def generar_tareas(solicitud: GenerarTareasRequest):
     tareas = await derivar_tareas_llm([hu.model_dump() for hu in solicitud.historias_usuario])
+    return {"tareas": tareas}
+
+@router.post("/historias-usuario/regenerar-ru/", response_model=HistoriasUsuarioResponse)
+async def regenerar_historias_de_ru(ru: RequisitoItem):
+    """Genera historias de usuario únicamente para un requisito que fue modificado."""
+    historias = await derivar_historias_usuario_llm([ru.model_dump()])
+    return {"historias_usuario": historias}
+
+@router.post("/tareas/regenerar-hu/", response_model=TareasResponse)
+async def regenerar_tareas_de_hu(hu: HistoriaUsuarioItem):
+    """Regenera tareas técnicas únicamente para una Historia de Usuario que cambió."""
+    tareas = await derivar_tareas_llm([hu.model_dump()])
     return {"tareas": tareas}

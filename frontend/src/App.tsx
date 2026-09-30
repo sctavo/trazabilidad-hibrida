@@ -1,54 +1,92 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { LoginView } from "./components/LoginView";
 import { IngestaView } from "./components/IngestaView";
 import { RequisitosView } from "./components/RequisitosView";
 import { HistoriasUsuarioView } from "./components/HistoriasUsuarioView";
 import { TareasView } from "./components/TareasView";
+import { ProyectosModal } from "./components/ProyectosModal";
 import type { RequisitoItem, HistoriaUsuarioItem, TareaItem } from "./types";
 
 export default function App() {
-  // Autenticación
   const [token, setToken] = useState<string | null>(localStorage.getItem("token"));
   const [usuario, setUsuario] = useState<{ id: string; nombre: string; email: string } | null>(
     localStorage.getItem("usuario") ? JSON.parse(localStorage.getItem("usuario")!) : null
   );
 
-  // Proyecto activo
   const [proyectoId, setProyectoId] = useState<string | null>(null);
   const [nombreProyecto, setNombreProyecto] = useState("Especificación de Requisitos");
   const [textoDocumento, setTextoDocumento] = useState("");
   const [etapaActual, setEtapaActual] = useState<1 | 2 | 3 | 4>(1);
 
-  // Artefactos en memoria
   const [requisitos, setRequisitos] = useState<RequisitoItem[]>([]);
   const [historias, setHistorias] = useState<HistoriaUsuarioItem[]>([]);
   const [tareas, setTareas] = useState<TareaItem[]>([]);
 
-  // Spinners
+  // Estados de Trazabilidad en Cascada
+  const [ruModificadosIds, setRuModificadosIds] = useState<Set<string>>(new Set());
+  const [huModificadasIds, setHuModificadasIds] = useState<Set<string>>(new Set());
+
   const [cargandoRequisitos, setCargandoRequisitos] = useState(false);
   const [cargandoHu, setCargandoHu] = useState(false);
   const [cargandoTareas, setCargandoTareas] = useState(false);
   const [guardandoBD, setGuardandoBD] = useState(false);
-
-  const handleLoginExitoso = (jwt: string, user: { id: string; nombre: string; email: string }) => {
-    setToken(jwt);
-    setUsuario(user);
-    localStorage.setItem("token", jwt);
-    localStorage.setItem("usuario", JSON.stringify(user));
-  };
+  const [mostrarModalProyectos, setMostrarModalProyectos] = useState(false);
 
   const handleCerrarSesion = () => {
     setToken(null);
     setUsuario(null);
     localStorage.removeItem("token");
     localStorage.removeItem("usuario");
+
+    setProyectoId(null);
+    setNombreProyecto("Especificación de Requisitos");
+    setTextoDocumento("");
+    setRequisitos([]);
+    setHistorias([]);
+    setTareas([]);
+    setRuModificadosIds(new Set());
+    setHuModificadasIds(new Set());
+    setEtapaActual(1);
   };
 
-  // Guardar estado actual en PostgreSQL (HU-22 / RF30)
+  const handleCrearNuevoProyecto = () => {
+    setProyectoId(null);
+    setNombreProyecto(`Proyecto ${new Date().toLocaleDateString()}`);
+    setTextoDocumento("");
+    setRequisitos([]);
+    setHistorias([]);
+    setTareas([]);
+    setRuModificadosIds(new Set());
+    setHuModificadasIds(new Set());
+    setEtapaActual(1);
+  };
+
+  const handleCargarProyecto = async (id: string) => {
+    if (!token) return;
+    try {
+      const resp = await fetch(`http://localhost:8000/api/v1/proyectos/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!resp.ok) throw new Error("Error al cargar proyecto.");
+      const data = await resp.json();
+
+      setProyectoId(data.id);
+      setNombreProyecto(data.nombre);
+      setTextoDocumento(data.texto_documento || "");
+      setRequisitos(data.requisitos || []);
+      setHistorias(data.historias_usuario || []);
+      setTareas(data.tareas || []);
+      setRuModificadosIds(new Set());
+      setHuModificadasIds(new Set());
+      setEtapaActual(data.etapa_actual as 1 | 2 | 3 | 4);
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
   const handleGuardarProyectoBD = async () => {
     if (!token) return;
     setGuardandoBD(true);
-
     try {
       const url = proyectoId
         ? `http://localhost:8000/api/v1/proyectos/?proyecto_id=${proyectoId}`
@@ -70,10 +108,10 @@ export default function App() {
         }),
       });
 
-      if (!resp.ok) throw new Error("Error al persistir el proyecto en base de datos.");
+      if (!resp.ok) throw new Error("Error al persistir en base de datos.");
       const data = await resp.json();
       setProyectoId(data.id);
-      alert("✓ Proyecto y artefactos guardados en PostgreSQL exitosamente.");
+      alert("✓ Proyecto guardado en PostgreSQL exitosamente.");
     } catch (err: any) {
       alert(err.message);
     } finally {
@@ -81,7 +119,7 @@ export default function App() {
     }
   };
 
-  // Ingesta -> Requisitos (Solo llama a IA si la lista está vacía o el texto cambió)
+  // Etapa 1 -> Etapa 2
   const handleSolicitarRequisitos = async (texto: string) => {
     setTextoDocumento(texto);
     setCargandoRequisitos(true);
@@ -92,9 +130,13 @@ export default function App() {
         body: JSON.stringify({ texto }),
       });
 
-      if (!response.ok) throw new Error("Error al generar requisitos con el LLM");
+      if (!response.ok) throw new Error("Error al generar requisitos");
       const data = await response.json();
       setRequisitos(data.requisitos);
+      setHistorias([]);
+      setTareas([]);
+      setRuModificadosIds(new Set());
+      setHuModificadasIds(new Set());
       setEtapaActual(2);
     } catch (err: any) {
       alert(err.message);
@@ -103,93 +145,129 @@ export default function App() {
     }
   };
 
-  // Requisitos -> HU (Evita re-ejecutar IA si ya existen historias y solo se está avanzando)
-  const handleRequisitosAprobados = async (aprobados: RequisitoItem[]) => {
+  // Etapa 2 -> Etapa 3 (Recepción de cambios en RU y avance)
+  const handleRequisitosAprobados = async (
+    aprobados: RequisitoItem[],
+    modificados: string[]
+  ) => {
     setRequisitos(aprobados);
 
-    if (historias.length > 0) {
-      setEtapaActual(3);
-      return;
+    // Si hubo modificaciones, las acumulamos para alertar a las HU
+    if (modificados.length > 0) {
+      setRuModificadosIds((prev) => {
+        const nuevo = new Set(prev);
+        modificados.forEach((id) => nuevo.add(id));
+        return nuevo;
+      });
     }
 
-    setCargandoHu(true);
-    try {
-      const response = await fetch("http://localhost:8000/api/v1/generar/historias-usuario/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ requisitos: aprobados }),
-      });
+    // Primera generación de HU
+    if (historias.length === 0) {
+      setCargandoHu(true);
+      try {
+        const response = await fetch("http://localhost:8000/api/v1/generar/historias-usuario/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ requisitos: aprobados }),
+        });
 
-      if (!response.ok) throw new Error("Error al derivar Historias de Usuario");
-      const data = await response.json();
-      setHistorias(data.historias_usuario);
+        if (!response.ok) throw new Error("Error al derivar Historias de Usuario");
+        const data = await response.json();
+        setHistorias(data.historias_usuario);
+        setRuModificadosIds(new Set());
+        setEtapaActual(3);
+      } catch (error: any) {
+        alert(error.message);
+      } finally {
+        setCargandoHu(false);
+      }
+    } else {
+      // Ya existen HU: avanzamos a revisarlas
       setEtapaActual(3);
-    } catch (error: any) {
-      alert(error.message);
-    } finally {
-      setCargandoHu(false);
     }
   };
 
-  // HU -> Tareas (Evita re-ejecutar IA si ya existen tareas)
+  // Registrar que una HU cambió para alertar a Tareas
+  const handleRegistrarHuModificada = (huId: string) => {
+    setHuModificadasIds((prev) => new Set(prev).add(huId));
+  };
+
+  // Etapa 3 -> Etapa 4
   const handleHistoriasAprobadas = async (aprobadas: HistoriaUsuarioItem[]) => {
     setHistorias(aprobadas);
 
-    if (tareas.length > 0) {
+    // Primera generación de Tareas
+    if (tareas.length === 0) {
+      setCargandoTareas(true);
+      try {
+        const response = await fetch("http://localhost:8000/api/v1/generar/tareas/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ historias_usuario: aprobadas }),
+        });
+
+        if (!response.ok) throw new Error("Error al derivar Tareas Técnicas");
+        const data = await response.json();
+        setTareas(data.tareas);
+        setHuModificadasIds(new Set());
+        setEtapaActual(4);
+      } catch (error: any) {
+        alert(error.message);
+      } finally {
+        setCargandoTareas(false);
+      }
+    } else {
       setEtapaActual(4);
-      return;
     }
-
-    setCargandoTareas(true);
-    try {
-      const response = await fetch("http://localhost:8000/api/v1/generar/tareas/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ historias_usuario: aprobadas }),
-      });
-
-      if (!response.ok) throw new Error("Error al derivar Tareas Técnicas");
-      const data = await response.json();
-      setTareas(data.tareas);
-      setEtapaActual(4);
-    } catch (error: any) {
-      alert(error.message);
-    } finally {
-      setCargandoTareas(false);
-    }
-  };
-
-  const handleTareasAprobadas = (aprobadas: TareaItem[]) => {
-    setTareas(aprobadas);
-    alert("Plan de tareas técnicas aprobado. Listo para exportar o revisar trazabilidad.");
   };
 
   if (!token) {
-    return <LoginView onLoginExitoso={handleLoginExitoso} />;
+    return (
+      <LoginView
+        onLoginExitoso={(jwt, usr) => {
+          setToken(jwt);
+          setUsuario(usr);
+          localStorage.setItem("token", jwt);
+          localStorage.setItem("usuario", JSON.stringify(usr));
+        }}
+      />
+    );
   }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 py-6 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto space-y-6">
-        {/* Barra superior de sesión y persistencia */}
+        
+        {/* Cabecera */}
         <header className="flex flex-col sm:flex-row items-center justify-between bg-white p-4 rounded-xl border border-slate-200 shadow-xs gap-3">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs">
               {usuario?.nombre.slice(0, 2).toUpperCase() || "AN"}
             </div>
             <div>
-              <span className="text-xs font-bold text-slate-800 block">{usuario?.nombre}</span>
-              <span className="text-[11px] text-slate-500">{usuario?.email}</span>
+              <input
+                type="text"
+                value={nombreProyecto}
+                onChange={(e) => setNombreProyecto(e.target.value)}
+                className="font-bold text-xs text-slate-800 border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none"
+              />
+              <span className="text-[11px] text-slate-400 block">Analista: {usuario?.email}</span>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <button
+              onClick={() => setMostrarModalProyectos(true)}
+              className="text-xs font-semibold px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition"
+            >
+              📁 Mis Proyectos
+            </button>
+            <button
               onClick={handleGuardarProyectoBD}
               disabled={guardandoBD}
-              className="text-xs font-semibold px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg transition disabled:opacity-50 flex items-center gap-1"
+              className="text-xs font-semibold px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition disabled:opacity-50"
             >
-              {guardandoBD ? "Guardando..." : "💾 Guardar Proyecto en BD"}
+              {guardandoBD ? "Guardando..." : "💾 Guardar"}
             </button>
             <button
               onClick={handleCerrarSesion}
@@ -200,21 +278,29 @@ export default function App() {
           </div>
         </header>
 
-        {/* Título de la aplicación */}
+        {mostrarModalProyectos && (
+          <ProyectosModal
+            token={token}
+            proyectoActivoId={proyectoId}
+            onCerrar={() => setMostrarModalProyectos(false)}
+            onCrearNuevo={handleCrearNuevoProyecto}
+            onCargarProyecto={handleCargarProyecto}
+          />
+        )}
+
         <div>
           <h1 className="text-2xl font-bold text-slate-900">
             Sistema para la especificación y trazabilidad de requisitos
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Transformación secuencial: Documento → Requisitos (RU) → Historias de Usuario → Tareas[cite: 14, 15].
+            Transformación secuencial estricta: Documento → Requisitos (RU) → Historias de Usuario → Tareas.
           </p>
         </div>
 
-        {/* Spinners de Carga */}
         {cargandoRequisitos && (
           <div className="bg-white border border-slate-200 rounded-xl p-12 text-center shadow-xs">
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <h3 className="text-sm font-semibold text-slate-800">Extrayendo Requisitos de Usuario (RU) con Gemini...</h3>
+            <h3 className="text-sm font-semibold text-slate-800">Extrayendo Requisitos de Usuario con Gemini...</h3>
           </div>
         )}
 
@@ -232,7 +318,6 @@ export default function App() {
           </div>
         )}
 
-        {/* Vistas según la etapa */}
         {!cargandoRequisitos && !cargandoHu && !cargandoTareas && (
           <>
             {etapaActual === 1 && <IngestaView onSolicitarGeneracion={handleSolicitarRequisitos} />}
@@ -247,22 +332,28 @@ export default function App() {
               <HistoriasUsuarioView
                 historiasIniciales={historias}
                 requisitosDisponibles={requisitos}
+                ruModificadosIds={ruModificadosIds}
                 onVolver={() => setEtapaActual(2)}
                 onConfirmar={handleHistoriasAprobadas}
+                onRegistrarHuModificada={handleRegistrarHuModificada}
               />
             )}
             {etapaActual === 4 && (
               <TareasView
                 tareasIniciales={tareas}
                 historiasDisponibles={historias}
+                huModificadasIds={huModificadasIds}
                 onVolver={() => setEtapaActual(3)}
-                onConfirmar={handleTareasAprobadas}
+                onConfirmar={(aprobadas) => {
+                  setTareas(aprobadas);
+                  alert("Plan de tareas técnicas aprobado.");
+                }}
               />
             )}
           </>
         )}
 
-        {/* Pipeline de navegación visual */}
+        {/* Pipeline de Navegación */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-slate-200 text-xs">
           <button
             onClick={() => setEtapaActual(1)}

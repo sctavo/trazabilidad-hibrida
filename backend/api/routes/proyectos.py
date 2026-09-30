@@ -224,3 +224,21 @@ def cargar_proyecto_completo(
         "historias_usuario": historias_dto,
         "tareas": tareas_dto
     }
+
+@router.delete("/{proyecto_id}")
+def eliminar_proyecto(
+    proyecto_id: str,
+    db: Session = Depends(get_db),
+    usuario_actual: models.Usuario = Depends(obtener_usuario_actual)
+):
+    """Elimina un proyecto y todos sus artefactos asociados en cascada."""
+    proyecto = db.query(models.Proyecto).filter(
+        models.Proyecto.id == uuid.UUID(proyecto_id),
+        models.Proyecto.usuario_id == usuario_actual.id
+    ).first()
+    if not proyecto:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado.")
+
+    db.delete(proyecto)
+    db.commit()
+    return {"mensaje": "Proyecto eliminado exitosamente."}
