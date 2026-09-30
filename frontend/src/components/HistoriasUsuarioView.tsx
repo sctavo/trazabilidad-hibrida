@@ -8,6 +8,7 @@ interface HistoriasUsuarioViewProps {
   onVolver: () => void;
   onConfirmar: (historiasAprobadas: HistoriaUsuarioItem[]) => void;
   onRegistrarHuModificada: (huId: string) => void;
+  onHistoriasActualizadas: (historias: HistoriaUsuarioItem[]) => void;
 }
 
 export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
@@ -17,6 +18,7 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
   onVolver,
   onConfirmar,
   onRegistrarHuModificada,
+  onHistoriasActualizadas,
 }) => {
   const [historias, setHistorias] = useState<HistoriaUsuarioItem[]>(historiasIniciales);
   const [huModificadas, setHuModificadas] = useState<Set<string>>(new Set());
@@ -36,20 +38,23 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
     const hu = actualizadas[index];
     actualizadas[index] = { ...hu, [campo]: valor };
     setHistorias(actualizadas);
+    onHistoriasActualizadas(actualizadas);
 
     if (campo !== "criterios_aceptacion") {
       setHuModificadas((prev) => new Set(prev).add(hu.id));
-      onRegistrarHuModificada(hu.id); // Notifica a Tareas
+      onRegistrarHuModificada(hu.id);
     }
   };
 
   const eliminarHistoria = (index: number) => {
     const id = historias[index].id;
-    setHistorias(historias.filter((_, i) => i !== index));
+    const actualizadas = historias.filter((_, i) => i !== index);
+    setHistorias(actualizadas);
+    onHistoriasActualizadas(actualizadas);
     onRegistrarHuModificada(id);
   };
 
-  // Re-derivar selectivamente las HUs de un RU que fue modificado
+  // Re-derivar en el espacio exacto donde estaban las HUs de este RU
   const handleRegenerarHUsPorRU = async (ruId: string) => {
     const ruObj = requisitosDisponibles.find((r) => r.id === ruId);
     if (!ruObj) return;
@@ -65,12 +70,49 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
       const data = await resp.json();
       const nuevasHUsParaEsteRu: HistoriaUsuarioItem[] = data.historias_usuario;
 
-      // Reemplazamos las HUs de este RU y notificamos que cambiaron
-      const historiasSinEsteRu = historias.filter((h) => h.rf_origen !== ruId);
-      const combinadas = [...historiasSinEsteRu, ...nuevasHUsParaEsteRu];
-      setHistorias(combinadas);
+      // 1. Encontrar el índice donde inicia el bloque de este RU
+      const primerIndice = historias.findIndex((h) => h.rf_origen === ruId);
 
-      nuevasHUsParaEsteRu.forEach((h) => onRegistrarHuModificada(h.id));
+      let combinadas: HistoriaUsuarioItem[] = [];
+      if (primerIndice !== -1) {
+        // Elementos previos al bloque
+        const antes = historias.slice(0, primerIndice);
+        // Elementos posteriores excluyendo las HUs que pertenecían al RU regenerado
+        const despues = historias.slice(primerIndice).filter((h) => h.rf_origen !== ruId);
+        // Se insertan en su posición original exacta
+        combinadas = [...antes, ...nuevasHUsParaEsteRu, ...despues];
+      } else {
+        // Si no existían HUs previas de este RU, ubicar según el orden de requisitosDisponibles
+        const ruIdx = requisitosDisponibles.findIndex((r) => r.id === ruId);
+        const siguienteIndice = historias.findIndex((h) => {
+          const hRuIdx = requisitosDisponibles.findIndex((r) => r.id === h.rf_origen);
+          return hRuIdx > ruIdx;
+        });
+
+        if (siguienteIndice !== -1) {
+          combinadas = [
+            ...historias.slice(0, siguienteIndice),
+            ...nuevasHUsParaEsteRu,
+            ...historias.slice(siguienteIndice),
+          ];
+        } else {
+          combinadas = [...historias, ...nuevasHUsParaEsteRu];
+        }
+      }
+
+      // Re-numeración correlativa limpia (HU-01, HU-02...)
+      const normalizadas = combinadas.map((h, i) => ({
+        ...h,
+        id: `HU-${String(i + 1).padStart(2, "0")}`,
+      }));
+
+      setHistorias(normalizadas);
+      onHistoriasActualizadas(normalizadas);
+
+      // Notificar cambio sobre las historias de este RU
+      normalizadas
+        .filter((h) => h.rf_origen === ruId)
+        .forEach((h) => onRegistrarHuModificada(h.id));
     } catch (err: any) {
       alert(err.message);
     } finally {
@@ -103,14 +145,15 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
     }
   };
 
+  // Agregar HU manual inmediatamente después del grupo de su RU origen
   const agregarHistoriaManual = () => {
     if (!nuevoTitulo.trim() || !nuevoQuiero.trim()) {
       alert("Indica al menos el título y el deseo (Quiero).");
       return;
     }
-    const nuevoId = `HU-${String(historias.length + 1).padStart(2, "0")}`;
+
     const nuevaHu: HistoriaUsuarioItem = {
-      id: nuevoId,
+      id: "TEMP",
       rf_origen: nuevoRfOrigen,
       titulo: nuevoTitulo.trim(),
       rol: nuevoRol.trim(),
@@ -121,8 +164,56 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
         : ["Criterio estándar verificado."],
     };
 
-    setHistorias([...historias, nuevaHu]);
-    onRegistrarHuModificada(nuevoId);
+    // Buscar el último índice que comparte el mismo RU origen
+    let ultimoIndiceMismoRu = -1;
+    for (let i = historias.length - 1; i >= 0; i--) {
+      if (historias[i].rf_origen === nuevoRfOrigen) {
+        ultimoIndiceMismoRu = i;
+        break;
+      }
+    }
+
+    let actualizadas: HistoriaUsuarioItem[] = [];
+    if (ultimoIndiceMismoRu !== -1) {
+      // Se inserta contiguo a sus hermanas de RU
+      actualizadas = [
+        ...historias.slice(0, ultimoIndiceMismoRu + 1),
+        nuevaHu,
+        ...historias.slice(ultimoIndiceMismoRu + 1),
+      ];
+    } else {
+      // Si es el primer elemento para ese RU, colocarlo respetando el orden del RU
+      const ruIdx = requisitosDisponibles.findIndex((r) => r.id === nuevoRfOrigen);
+      const siguienteIndice = historias.findIndex((h) => {
+        const hRuIdx = requisitosDisponibles.findIndex((r) => r.id === h.rf_origen);
+        return hRuIdx > ruIdx;
+      });
+
+      if (siguienteIndice !== -1) {
+        actualizadas = [
+          ...historias.slice(0, siguienteIndice),
+          nuevaHu,
+          ...historias.slice(siguienteIndice),
+        ];
+      } else {
+        actualizadas = [...historias, nuevaHu];
+      }
+    }
+
+    const normalizadas = actualizadas.map((h, i) => ({
+      ...h,
+      id: `HU-${String(i + 1).padStart(2, "0")}`,
+    }));
+
+    setHistorias(normalizadas);
+    onHistoriasActualizadas(normalizadas);
+
+    const huCreada = normalizadas.find(
+      (h) => h.titulo === nuevaHu.titulo && h.rf_origen === nuevaHu.rf_origen
+    );
+    if (huCreada) {
+      onRegistrarHuModificada(huCreada.id);
+    }
 
     setNuevoTitulo("");
     setNuevoQuiero("");
@@ -132,7 +223,6 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6">
-      {/* Cabecera */}
       <div className="flex items-center justify-between bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
         <div>
           <div className="flex items-center gap-2">
@@ -153,7 +243,6 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
         </button>
       </div>
 
-      {/* Lista de Historias */}
       <div className="space-y-4">
         {historias.map((hu, index) => {
           const fueModificada = huModificadas.has(hu.id);
@@ -215,7 +304,6 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
                 </div>
               </div>
 
-              {/* Estructura Ágil */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
                 <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100">
                   <span className="font-semibold text-slate-500 block mb-1">Como:</span>
@@ -248,7 +336,6 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
                 </div>
               </div>
 
-              {/* Criterios de Aceptación */}
               <div className="bg-slate-50/70 p-3.5 rounded-lg border border-slate-100 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
@@ -277,7 +364,6 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
         })}
       </div>
 
-      {/* Formulario Manual de Alta */}
       <div className="bg-purple-50/40 p-5 rounded-xl border border-dashed border-purple-300 space-y-3">
         <label className="text-xs font-bold text-purple-900 uppercase tracking-wider block">
           + Agregar Historia de Usuario Manual
@@ -336,7 +422,7 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
             onClick={agregarHistoriaManual}
             className="text-xs font-semibold px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-lg transition"
           >
-            Añadir Historia
+            Añadir Historia al Catálogo
           </button>
         </div>
       </div>

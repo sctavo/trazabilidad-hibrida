@@ -7,6 +7,7 @@ interface TareasViewProps {
   huModificadasIds: Set<string>;
   onVolver: () => void;
   onConfirmar: (tareasAprobadas: TareaItem[]) => void;
+  onTareasActualizadas: (tareas: TareaItem[]) => void;
 }
 
 export const TareasView: React.FC<TareasViewProps> = ({
@@ -15,6 +16,7 @@ export const TareasView: React.FC<TareasViewProps> = ({
   huModificadasIds,
   onVolver,
   onConfirmar,
+  onTareasActualizadas,
 }) => {
   const [tareas, setTareas] = useState<TareaItem[]>(tareasIniciales);
   const [regenerandoHuId, setRegenerandoHuId] = useState<string | null>(null);
@@ -30,13 +32,16 @@ export const TareasView: React.FC<TareasViewProps> = ({
     const actualizadas = [...tareas];
     actualizadas[index] = { ...actualizadas[index], [campo]: valor };
     setTareas(actualizadas);
+    onTareasActualizadas(actualizadas);
   };
 
   const eliminarTarea = (index: number) => {
-    setTareas(tareas.filter((_, i) => i !== index));
+    const actualizadas = tareas.filter((_, i) => i !== index);
+    setTareas(actualizadas);
+    onTareasActualizadas(actualizadas);
   };
 
-  // Re-derivar únicamente las tareas de una HU alterada
+  // Re-derivar e insertar exactamente en el slot de esa HU
   const handleRegenerarTareasPorHU = async (huId: string) => {
     const huObj = historiasDisponibles.find((h) => h.id === huId);
     if (!huObj) return;
@@ -52,9 +57,38 @@ export const TareasView: React.FC<TareasViewProps> = ({
       const data = await resp.json();
       const nuevasTareas: TareaItem[] = data.tareas;
 
-      // Reemplazamos únicamente las tareas pertenecientes a esta HU
-      const tareasRestantes = tareas.filter((t) => t.hu_origen !== huId);
-      setTareas([...tareasRestantes, ...nuevasTareas]);
+      const primerIndice = tareas.findIndex((t) => t.hu_origen === huId);
+
+      let combinadas: TareaItem[] = [];
+      if (primerIndice !== -1) {
+        const antes = tareas.slice(0, primerIndice);
+        const despues = tareas.slice(primerIndice).filter((t) => t.hu_origen !== huId);
+        combinadas = [...antes, ...nuevasTareas, ...despues];
+      } else {
+        const huIdx = historiasDisponibles.findIndex((h) => h.id === huId);
+        const siguienteIndice = tareas.findIndex((t) => {
+          const tHuIdx = historiasDisponibles.findIndex((h) => h.id === t.hu_origen);
+          return tHuIdx > huIdx;
+        });
+
+        if (siguienteIndice !== -1) {
+          combinadas = [
+            ...tareas.slice(0, siguienteIndice),
+            ...nuevasTareas,
+            ...tareas.slice(siguienteIndice),
+          ];
+        } else {
+          combinadas = [...tareas, ...nuevasTareas];
+        }
+      }
+
+      const normalizadas = combinadas.map((t, i) => ({
+        ...t,
+        id: `TSK-${String(i + 1).padStart(2, "0")}`,
+      }));
+
+      setTareas(normalizadas);
+      onTareasActualizadas(normalizadas);
     } catch (err: any) {
       alert(err.message);
     } finally {
@@ -62,21 +96,63 @@ export const TareasView: React.FC<TareasViewProps> = ({
     }
   };
 
+  // Agregar tarea contigua a su HU origen
   const agregarTareaManual = () => {
     if (!nuevoTitulo.trim()) {
       alert("Indica el título de la tarea.");
       return;
     }
-    const nuevoId = `TSK-${String(tareas.length + 1).padStart(2, "0")}`;
+
     const nuevaTarea: TareaItem = {
-      id: nuevoId,
+      id: "TEMP",
       hu_origen: nuevaHuOrigen,
       titulo: nuevoTitulo.trim(),
       descripcion: nuevaDescripcion.trim() || "Implementación técnica según requerimientos.",
       tipo: nuevoTipo,
       estimacion_horas: Number(nuevasHoras) || 1,
     };
-    setTareas([...tareas, nuevaTarea]);
+
+    let ultimoIndiceMismaHu = -1;
+    for (let i = tareas.length - 1; i >= 0; i--) {
+      if (tareas[i].hu_origen === nuevaHuOrigen) {
+        ultimoIndiceMismaHu = i;
+        break;
+      }
+    }
+
+    let actualizadas: TareaItem[] = [];
+    if (ultimoIndiceMismaHu !== -1) {
+      actualizadas = [
+        ...tareas.slice(0, ultimoIndiceMismaHu + 1),
+        nuevaTarea,
+        ...tareas.slice(ultimoIndiceMismaHu + 1),
+      ];
+    } else {
+      const huIdx = historiasDisponibles.findIndex((h) => h.id === nuevaHuOrigen);
+      const siguienteIndice = tareas.findIndex((t) => {
+        const tHuIdx = historiasDisponibles.findIndex((h) => h.id === t.hu_origen);
+        return tHuIdx > huIdx;
+      });
+
+      if (siguienteIndice !== -1) {
+        actualizadas = [
+          ...tareas.slice(0, siguienteIndice),
+          nuevaTarea,
+          ...tareas.slice(siguienteIndice),
+        ];
+      } else {
+        actualizadas = [...tareas, nuevaTarea];
+      }
+    }
+
+    const normalizadas = actualizadas.map((t, i) => ({
+      ...t,
+      id: `TSK-${String(i + 1).padStart(2, "0")}`,
+    }));
+
+    setTareas(normalizadas);
+    onTareasActualizadas(normalizadas);
+
     setNuevoTitulo("");
     setNuevaDescripcion("");
     setNuevasHoras(4);
@@ -86,7 +162,6 @@ export const TareasView: React.FC<TareasViewProps> = ({
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6">
-      {/* Encabezado */}
       <div className="flex items-center justify-between bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
         <div>
           <div className="flex items-center gap-2">
@@ -110,7 +185,6 @@ export const TareasView: React.FC<TareasViewProps> = ({
         </button>
       </div>
 
-      {/* Lista de Tareas */}
       <div className="space-y-3">
         {tareas.map((task, index) => {
           const huPadreFueModificada = huModificadasIds.has(task.hu_origen);
@@ -203,7 +277,6 @@ export const TareasView: React.FC<TareasViewProps> = ({
         })}
       </div>
 
-      {/* Agregar Tarea Manual */}
       <div className="bg-indigo-50/40 p-5 rounded-xl border border-dashed border-indigo-300 space-y-3">
         <label className="text-xs font-bold text-indigo-900 uppercase tracking-wider block">
           + Agregar Tarea Técnica Manual

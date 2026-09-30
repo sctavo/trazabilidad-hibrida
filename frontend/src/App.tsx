@@ -336,6 +336,7 @@ export default function App() {
                 onVolver={() => setEtapaActual(2)}
                 onConfirmar={handleHistoriasAprobadas}
                 onRegistrarHuModificada={handleRegistrarHuModificada}
+                onHistoriasActualizadas={(actualizadas) => setHistorias(actualizadas)}
               />
             )}
             {etapaActual === 4 && (
@@ -348,6 +349,7 @@ export default function App() {
                   setTareas(aprobadas);
                   alert("Plan de tareas técnicas aprobado.");
                 }}
+                onTareasActualizadas={(actualizadas) => setTareas(actualizadas)}
               />
             )}
           </>
