@@ -22,9 +22,12 @@ export default function App() {
   const [historias, setHistorias] = useState<HistoriaUsuarioItem[]>([]);
   const [tareas, setTareas] = useState<TareaItem[]>([]);
 
-  // Estados de Trazabilidad en Cascada
+  // Estados de Trazabilidad Jerárquica: Amarillo vs Verde
   const [ruModificadosIds, setRuModificadosIds] = useState<Set<string>>(new Set());
+  const [ruSincronizadosIds, setRuSincronizadosIds] = useState<Set<string>>(new Set());
+
   const [huModificadasIds, setHuModificadasIds] = useState<Set<string>>(new Set());
+  const [huSincronizadasIds, setHuSincronizadasIds] = useState<Set<string>>(new Set());
 
   const [cargandoRequisitos, setCargandoRequisitos] = useState(false);
   const [cargandoHu, setCargandoHu] = useState(false);
@@ -45,7 +48,9 @@ export default function App() {
     setHistorias([]);
     setTareas([]);
     setRuModificadosIds(new Set());
+    setRuSincronizadosIds(new Set());
     setHuModificadasIds(new Set());
+    setHuSincronizadasIds(new Set());
     setEtapaActual(1);
   };
 
@@ -57,7 +62,9 @@ export default function App() {
     setHistorias([]);
     setTareas([]);
     setRuModificadosIds(new Set());
+    setRuSincronizadosIds(new Set());
     setHuModificadasIds(new Set());
+    setHuSincronizadasIds(new Set());
     setEtapaActual(1);
   };
 
@@ -77,7 +84,9 @@ export default function App() {
       setHistorias(data.historias_usuario || []);
       setTareas(data.tareas || []);
       setRuModificadosIds(new Set());
+      setRuSincronizadosIds(new Set());
       setHuModificadasIds(new Set());
+      setHuSincronizadasIds(new Set());
       setEtapaActual(data.etapa_actual as 1 | 2 | 3 | 4);
     } catch (err: any) {
       alert(err.message);
@@ -119,7 +128,6 @@ export default function App() {
     }
   };
 
-  // Etapa 1 -> Etapa 2
   const handleSolicitarRequisitos = async (texto: string) => {
     setTextoDocumento(texto);
     setCargandoRequisitos(true);
@@ -136,7 +144,9 @@ export default function App() {
       setHistorias([]);
       setTareas([]);
       setRuModificadosIds(new Set());
+      setRuSincronizadosIds(new Set());
       setHuModificadasIds(new Set());
+      setHuSincronizadasIds(new Set());
       setEtapaActual(2);
     } catch (err: any) {
       alert(err.message);
@@ -145,23 +155,27 @@ export default function App() {
     }
   };
 
-  // Etapa 2 -> Etapa 3 (Recepción de cambios en RU y avance)
+  // Etapa 2 -> Etapa 3
   const handleRequisitosAprobados = async (
     aprobados: RequisitoItem[],
     modificados: string[]
   ) => {
     setRequisitos(aprobados);
 
-    // Si hubo modificaciones, las acumulamos para alertar a las HU
+    // Si se modifica un RU: pasa a amarillo y abandona el verde (se habilita de nuevo la re-derivación)
     if (modificados.length > 0) {
       setRuModificadosIds((prev) => {
         const nuevo = new Set(prev);
         modificados.forEach((id) => nuevo.add(id));
         return nuevo;
       });
+      setRuSincronizadosIds((prev) => {
+        const nuevo = new Set(prev);
+        modificados.forEach((id) => nuevo.delete(id));
+        return nuevo;
+      });
     }
 
-    // Primera generación de HU
     if (historias.length === 0) {
       setCargandoHu(true);
       try {
@@ -175,6 +189,7 @@ export default function App() {
         const data = await response.json();
         setHistorias(data.historias_usuario);
         setRuModificadosIds(new Set());
+        setRuSincronizadosIds(new Set());
         setEtapaActual(3);
       } catch (error: any) {
         alert(error.message);
@@ -182,21 +197,44 @@ export default function App() {
         setCargandoHu(false);
       }
     } else {
-      // Ya existen HU: avanzamos a revisarlas
       setEtapaActual(3);
     }
   };
 
-  // Registrar que una HU cambió para alertar a Tareas
+  // Cuando se re-deriva un RU con éxito en Etapa 3: pasa de amarillo a verde y consume su oportunidad
+  const handleMarcarRuSincronizado = (ruId: string) => {
+    setRuModificadosIds((prev) => {
+      const nuevo = new Set(prev);
+      nuevo.delete(ruId);
+      return nuevo;
+    });
+    setRuSincronizadosIds((prev) => new Set(prev).add(ruId));
+  };
+
+  // Cuando se edita una HU en Etapa 3: alerta a Tareas (amarillo) y cancela su estado verde
   const handleRegistrarHuModificada = (huId: string) => {
     setHuModificadasIds((prev) => new Set(prev).add(huId));
+    setHuSincronizadasIds((prev) => {
+      const nuevo = new Set(prev);
+      nuevo.delete(huId);
+      return nuevo;
+    });
+  };
+
+  // Cuando se re-deriva una HU con éxito en Etapa 4: pasa de amarillo a verde y consume su oportunidad
+  const handleMarcarHuSincronizada = (huId: string) => {
+    setHuModificadasIds((prev) => {
+      const nuevo = new Set(prev);
+      nuevo.delete(huId);
+      return nuevo;
+    });
+    setHuSincronizadasIds((prev) => new Set(prev).add(huId));
   };
 
   // Etapa 3 -> Etapa 4
   const handleHistoriasAprobadas = async (aprobadas: HistoriaUsuarioItem[]) => {
     setHistorias(aprobadas);
 
-    // Primera generación de Tareas
     if (tareas.length === 0) {
       setCargandoTareas(true);
       try {
@@ -210,6 +248,7 @@ export default function App() {
         const data = await response.json();
         setTareas(data.tareas);
         setHuModificadasIds(new Set());
+        setHuSincronizadasIds(new Set());
         setEtapaActual(4);
       } catch (error: any) {
         alert(error.message);
@@ -333,10 +372,12 @@ export default function App() {
                 historiasIniciales={historias}
                 requisitosDisponibles={requisitos}
                 ruModificadosIds={ruModificadosIds}
+                ruSincronizadosIds={ruSincronizadosIds}
                 onVolver={() => setEtapaActual(2)}
                 onConfirmar={handleHistoriasAprobadas}
                 onRegistrarHuModificada={handleRegistrarHuModificada}
                 onHistoriasActualizadas={(actualizadas) => setHistorias(actualizadas)}
+                onMarcarRuSincronizado={handleMarcarRuSincronizado}
               />
             )}
             {etapaActual === 4 && (
@@ -344,12 +385,14 @@ export default function App() {
                 tareasIniciales={tareas}
                 historiasDisponibles={historias}
                 huModificadasIds={huModificadasIds}
+                huSincronizadasIds={huSincronizadasIds}
                 onVolver={() => setEtapaActual(3)}
                 onConfirmar={(aprobadas) => {
                   setTareas(aprobadas);
                   alert("Plan de tareas técnicas aprobado.");
                 }}
                 onTareasActualizadas={(actualizadas) => setTareas(actualizadas)}
+                onMarcarHuSincronizada={handleMarcarHuSincronizada}
               />
             )}
           </>

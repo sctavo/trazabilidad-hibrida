@@ -5,18 +5,22 @@ interface TareasViewProps {
   tareasIniciales: TareaItem[];
   historiasDisponibles: HistoriaUsuarioItem[];
   huModificadasIds: Set<string>;
+  huSincronizadasIds: Set<string>;
   onVolver: () => void;
   onConfirmar: (tareasAprobadas: TareaItem[]) => void;
   onTareasActualizadas: (tareas: TareaItem[]) => void;
+  onMarcarHuSincronizada: (huId: string) => void;
 }
 
 export const TareasView: React.FC<TareasViewProps> = ({
   tareasIniciales,
   historiasDisponibles,
   huModificadasIds,
+  huSincronizadasIds,
   onVolver,
   onConfirmar,
   onTareasActualizadas,
+  onMarcarHuSincronizada,
 }) => {
   const [tareas, setTareas] = useState<TareaItem[]>(tareasIniciales);
   const [regenerandoHuId, setRegenerandoHuId] = useState<string | null>(null);
@@ -41,7 +45,6 @@ export const TareasView: React.FC<TareasViewProps> = ({
     onTareasActualizadas(actualizadas);
   };
 
-  // Re-derivar e insertar exactamente en el slot de esa HU
   const handleRegenerarTareasPorHU = async (huId: string) => {
     const huObj = historiasDisponibles.find((h) => h.id === huId);
     if (!huObj) return;
@@ -58,8 +61,8 @@ export const TareasView: React.FC<TareasViewProps> = ({
       const nuevasTareas: TareaItem[] = data.tareas;
 
       const primerIndice = tareas.findIndex((t) => t.hu_origen === huId);
-
       let combinadas: TareaItem[] = [];
+
       if (primerIndice !== -1) {
         const antes = tareas.slice(0, primerIndice);
         const despues = tareas.slice(primerIndice).filter((t) => t.hu_origen !== huId);
@@ -89,6 +92,9 @@ export const TareasView: React.FC<TareasViewProps> = ({
 
       setTareas(normalizadas);
       onTareasActualizadas(normalizadas);
+
+      // Marca la HU como sincronizada (pasa a verde y retira el botón de re-derivar)
+      onMarcarHuSincronizada(huId);
     } catch (err: any) {
       alert(err.message);
     } finally {
@@ -96,7 +102,6 @@ export const TareasView: React.FC<TareasViewProps> = ({
     }
   };
 
-  // Agregar tarea contigua a su HU origen
   const agregarTareaManual = () => {
     if (!nuevoTitulo.trim()) {
       alert("Indica el título de la tarea.");
@@ -188,15 +193,19 @@ export const TareasView: React.FC<TareasViewProps> = ({
       <div className="space-y-3">
         {tareas.map((task, index) => {
           const huPadreFueModificada = huModificadasIds.has(task.hu_origen);
+          const huPadreFueSincronizada = huSincronizadasIds.has(task.hu_origen);
+
+          let estiloContenedor = "border-slate-200 hover:border-slate-300";
+          if (huPadreFueModificada) {
+            estiloContenedor = "border-amber-400 bg-amber-50/15 ring-1 ring-amber-200"; // Amarillo
+          } else if (huPadreFueSincronizada) {
+            estiloContenedor = "border-emerald-500 bg-emerald-50/20 ring-1 ring-emerald-200"; // Verde
+          }
 
           return (
             <div
               key={task.id}
-              className={`bg-white p-4 rounded-xl border shadow-xs flex flex-col md:flex-row md:items-center gap-3 transition-all ${
-                huPadreFueModificada
-                  ? "border-amber-400 bg-amber-50/15 ring-1 ring-amber-200"
-                  : "border-slate-200 hover:border-slate-300"
-              }`}
+              className={`bg-white p-4 rounded-xl border shadow-xs flex flex-col md:flex-row md:items-center gap-3 transition-all ${estiloContenedor}`}
             >
               <div className="flex items-center gap-2 md:w-56 shrink-0">
                 <span className="text-xs font-bold text-slate-700 bg-slate-100 px-2 py-1 rounded">
@@ -226,9 +235,18 @@ export const TareasView: React.FC<TareasViewProps> = ({
                     onChange={(e) => actualizarCampo(index, "titulo", e.target.value)}
                     className="w-full text-xs font-semibold text-slate-800 border-b border-transparent hover:border-slate-300 focus:border-indigo-500 focus:outline-none py-0.5"
                   />
+
+                  {/* Estado Amarillo */}
                   {huPadreFueModificada && (
                     <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded border border-amber-300 shrink-0">
                       ⚠️ HU {task.hu_origen} desactualizada
+                    </span>
+                  )}
+
+                  {/* Estado Verde */}
+                  {!huPadreFueModificada && huPadreFueSincronizada && (
+                    <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300 shrink-0">
+                      ✓ Sincronizado
                     </span>
                   )}
                 </div>
@@ -241,6 +259,7 @@ export const TareasView: React.FC<TareasViewProps> = ({
               </div>
 
               <div className="flex items-center gap-2 self-end md:self-center shrink-0">
+                {/* Botón único de re-derivar: desaparece una vez completada la acción */}
                 {huPadreFueModificada && (
                   <button
                     type="button"

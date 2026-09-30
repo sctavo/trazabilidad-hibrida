@@ -5,20 +5,24 @@ interface HistoriasUsuarioViewProps {
   historiasIniciales: HistoriaUsuarioItem[];
   requisitosDisponibles: RequisitoItem[];
   ruModificadosIds: Set<string>;
+  ruSincronizadosIds: Set<string>;
   onVolver: () => void;
   onConfirmar: (historiasAprobadas: HistoriaUsuarioItem[]) => void;
   onRegistrarHuModificada: (huId: string) => void;
   onHistoriasActualizadas: (historias: HistoriaUsuarioItem[]) => void;
+  onMarcarRuSincronizado: (ruId: string) => void;
 }
 
 export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
   historiasIniciales,
   requisitosDisponibles,
   ruModificadosIds,
+  ruSincronizadosIds,
   onVolver,
   onConfirmar,
   onRegistrarHuModificada,
   onHistoriasActualizadas,
+  onMarcarRuSincronizado,
 }) => {
   const [historias, setHistorias] = useState<HistoriaUsuarioItem[]>(historiasIniciales);
   const [huModificadas, setHuModificadas] = useState<Set<string>>(new Set());
@@ -54,7 +58,6 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
     onRegistrarHuModificada(id);
   };
 
-  // Re-derivar en el espacio exacto donde estaban las HUs de este RU
   const handleRegenerarHUsPorRU = async (ruId: string) => {
     const ruObj = requisitosDisponibles.find((r) => r.id === ruId);
     if (!ruObj) return;
@@ -70,19 +73,14 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
       const data = await resp.json();
       const nuevasHUsParaEsteRu: HistoriaUsuarioItem[] = data.historias_usuario;
 
-      // 1. Encontrar el índice donde inicia el bloque de este RU
       const primerIndice = historias.findIndex((h) => h.rf_origen === ruId);
-
       let combinadas: HistoriaUsuarioItem[] = [];
+
       if (primerIndice !== -1) {
-        // Elementos previos al bloque
         const antes = historias.slice(0, primerIndice);
-        // Elementos posteriores excluyendo las HUs que pertenecían al RU regenerado
         const despues = historias.slice(primerIndice).filter((h) => h.rf_origen !== ruId);
-        // Se insertan en su posición original exacta
         combinadas = [...antes, ...nuevasHUsParaEsteRu, ...despues];
       } else {
-        // Si no existían HUs previas de este RU, ubicar según el orden de requisitosDisponibles
         const ruIdx = requisitosDisponibles.findIndex((r) => r.id === ruId);
         const siguienteIndice = historias.findIndex((h) => {
           const hRuIdx = requisitosDisponibles.findIndex((r) => r.id === h.rf_origen);
@@ -100,7 +98,6 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
         }
       }
 
-      // Re-numeración correlativa limpia (HU-01, HU-02...)
       const normalizadas = combinadas.map((h, i) => ({
         ...h,
         id: `HU-${String(i + 1).padStart(2, "0")}`,
@@ -109,7 +106,10 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
       setHistorias(normalizadas);
       onHistoriasActualizadas(normalizadas);
 
-      // Notificar cambio sobre las historias de este RU
+      // Marca el RU como sincronizado (pasa a verde y deshabilita el botón)
+      onMarcarRuSincronizado(ruId);
+
+      // Propaga cambios a las tareas dependientes
       normalizadas
         .filter((h) => h.rf_origen === ruId)
         .forEach((h) => onRegistrarHuModificada(h.id));
@@ -145,7 +145,6 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
     }
   };
 
-  // Agregar HU manual inmediatamente después del grupo de su RU origen
   const agregarHistoriaManual = () => {
     if (!nuevoTitulo.trim() || !nuevoQuiero.trim()) {
       alert("Indica al menos el título y el deseo (Quiero).");
@@ -164,7 +163,6 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
         : ["Criterio estándar verificado."],
     };
 
-    // Buscar el último índice que comparte el mismo RU origen
     let ultimoIndiceMismoRu = -1;
     for (let i = historias.length - 1; i >= 0; i--) {
       if (historias[i].rf_origen === nuevoRfOrigen) {
@@ -175,14 +173,12 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
 
     let actualizadas: HistoriaUsuarioItem[] = [];
     if (ultimoIndiceMismoRu !== -1) {
-      // Se inserta contiguo a sus hermanas de RU
       actualizadas = [
         ...historias.slice(0, ultimoIndiceMismoRu + 1),
         nuevaHu,
         ...historias.slice(ultimoIndiceMismoRu + 1),
       ];
     } else {
-      // Si es el primer elemento para ese RU, colocarlo respetando el orden del RU
       const ruIdx = requisitosDisponibles.findIndex((r) => r.id === nuevoRfOrigen);
       const siguienteIndice = historias.findIndex((h) => {
         const hRuIdx = requisitosDisponibles.findIndex((r) => r.id === h.rf_origen);
@@ -247,17 +243,22 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
         {historias.map((hu, index) => {
           const fueModificada = huModificadas.has(hu.id);
           const padreFueModificado = ruModificadosIds.has(hu.rf_origen);
+          const padreFueSincronizado = ruSincronizadosIds.has(hu.rf_origen);
+
+          // Coloración reactiva según estado de sincronización
+          let estiloContenedor = "border-slate-200 hover:border-slate-300";
+          if (padreFueModificado) {
+            estiloContenedor = "border-amber-400 bg-amber-50/15 ring-1 ring-amber-200"; // Amarillo
+          } else if (padreFueSincronizado) {
+            estiloContenedor = "border-emerald-500 bg-emerald-50/20 ring-1 ring-emerald-200"; // Verde
+          } else if (fueModificada) {
+            estiloContenedor = "border-purple-300 ring-1 ring-purple-100";
+          }
 
           return (
             <div
               key={hu.id}
-              className={`bg-white p-5 rounded-xl border transition-all shadow-xs space-y-3 ${
-                padreFueModificado
-                  ? "border-amber-400 bg-amber-50/15 ring-1 ring-amber-200"
-                  : fueModificada
-                  ? "border-purple-300 ring-1 ring-purple-100"
-                  : "border-slate-200 hover:border-slate-300"
-              }`}
+              className={`bg-white p-5 rounded-xl border transition-all shadow-xs space-y-3 ${estiloContenedor}`}
             >
               <div className="flex items-center justify-between border-b border-slate-100 pb-3 gap-3">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -268,9 +269,17 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
                     Origen: {hu.rf_origen}
                   </span>
 
+                  {/* Estado Amarillo: Requiere re-derivación */}
                   {padreFueModificado && (
-                    <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded border border-amber-300 shrink-0">
+                    <span className="text-[10px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300 shrink-0">
                       ⚠️ Requisito {hu.rf_origen} modificado
+                    </span>
+                  )}
+
+                  {/* Estado Verde: Ya fue re-derivado exitosamente */}
+                  {!padreFueModificado && padreFueSincronizado && (
+                    <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300 shrink-0">
+                      ✓ Sincronizado con {hu.rf_origen}
                     </span>
                   )}
 
@@ -283,6 +292,7 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
                 </div>
 
                 <div className="flex items-center gap-2">
+                  {/* El botón de re-derivar SOLO aparece si está desactualizado (amarillo). Tras re-derivar, desaparece */}
                   {padreFueModificado && (
                     <button
                       type="button"
