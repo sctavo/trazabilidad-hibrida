@@ -11,6 +11,7 @@ interface HistoriasUsuarioViewProps {
   onRegistrarHuModificada: (huId: string) => void;
   onHistoriasActualizadas: (historias: HistoriaUsuarioItem[]) => void;
   onMarcarRuSincronizado: (ruId: string) => void;
+  onEliminarHistoriaCascade: (huId: string) => void;
 }
 
 export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
@@ -23,6 +24,7 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
   onRegistrarHuModificada,
   onHistoriasActualizadas,
   onMarcarRuSincronizado,
+  onEliminarHistoriaCascade,
 }) => {
   const [historias, setHistorias] = useState<HistoriaUsuarioItem[]>(historiasIniciales);
   const [huModificadas, setHuModificadas] = useState<Set<string>>(new Set());
@@ -50,12 +52,54 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
     }
   };
 
-  const eliminarHistoria = (index: number) => {
-    const id = historias[index].id;
-    const actualizadas = historias.filter((_, i) => i !== index);
+  // --- Manejo granular de Criterios Manuales ---
+  const handleEditarCriterioManual = (huIndex: number, criterioIndex: number, nuevoTexto: string) => {
+    const actualizadas = [...historias];
+    const hu = actualizadas[huIndex];
+    const nuevosCriterios = [...hu.criterios_aceptacion];
+    nuevosCriterios[criterioIndex] = nuevoTexto;
+    actualizadas[huIndex] = { ...hu, criterios_aceptacion: nuevosCriterios };
     setHistorias(actualizadas);
     onHistoriasActualizadas(actualizadas);
-    onRegistrarHuModificada(id);
+    onRegistrarHuModificada(hu.id);
+  };
+
+  const handleEliminarCriterioManual = (huIndex: number, criterioIndex: number) => {
+    const actualizadas = [...historias];
+    const hu = actualizadas[huIndex];
+    const nuevosCriterios = hu.criterios_aceptacion.filter((_, i) => i !== criterioIndex);
+    actualizadas[huIndex] = { ...hu, criterios_aceptacion: nuevosCriterios };
+    setHistorias(actualizadas);
+    onHistoriasActualizadas(actualizadas);
+    onRegistrarHuModificada(hu.id);
+  };
+
+  const handleAgregarCriterioManual = (huIndex: number) => {
+    const actualizadas = [...historias];
+    const hu = actualizadas[huIndex];
+    const nuevosCriterios = [...hu.criterios_aceptacion, "Nuevo criterio de aceptación comprobable."];
+    actualizadas[huIndex] = { ...hu, criterios_aceptacion: nuevosCriterios };
+    setHistorias(actualizadas);
+    onHistoriasActualizadas(actualizadas);
+    onRegistrarHuModificada(hu.id);
+  };
+
+  const handleEliminarHistoria = (index: number) => {
+    const hu = historias[index];
+    const confirmar = window.confirm(
+      `¿Deseas eliminar la historia ${hu.id}? Todas las Tareas Técnicas que dependan de ella también serán eliminadas.`
+    );
+    if (!confirmar) return;
+
+    const actualizadas = historias.filter((_, i) => i !== index);
+    const normalizadas = actualizadas.map((h, i) => ({
+      ...h,
+      id: `HU-${String(i + 1).padStart(2, "0")}`,
+    }));
+
+    setHistorias(normalizadas);
+    onHistoriasActualizadas(normalizadas);
+    onEliminarHistoriaCascade(hu.id); // Poda tareas en cascada
   };
 
   const handleRegenerarHUsPorRU = async (ruId: string) => {
@@ -105,11 +149,8 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
 
       setHistorias(normalizadas);
       onHistoriasActualizadas(normalizadas);
-
-      // Marca el RU como sincronizado (pasa a verde y deshabilita el botón)
       onMarcarRuSincronizado(ruId);
 
-      // Propaga cambios a las tareas dependientes
       normalizadas
         .filter((h) => h.rf_origen === ruId)
         .forEach((h) => onRegistrarHuModificada(h.id));
@@ -245,12 +286,11 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
           const padreFueModificado = ruModificadosIds.has(hu.rf_origen);
           const padreFueSincronizado = ruSincronizadosIds.has(hu.rf_origen);
 
-          // Coloración reactiva según estado de sincronización
           let estiloContenedor = "border-slate-200 hover:border-slate-300";
           if (padreFueModificado) {
-            estiloContenedor = "border-amber-400 bg-amber-50/15 ring-1 ring-amber-200"; // Amarillo
+            estiloContenedor = "border-amber-400 bg-amber-50/15 ring-1 ring-amber-200";
           } else if (padreFueSincronizado) {
-            estiloContenedor = "border-emerald-500 bg-emerald-50/20 ring-1 ring-emerald-200"; // Verde
+            estiloContenedor = "border-emerald-500 bg-emerald-50/20 ring-1 ring-emerald-200";
           } else if (fueModificada) {
             estiloContenedor = "border-purple-300 ring-1 ring-purple-100";
           }
@@ -269,14 +309,12 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
                     Origen: {hu.rf_origen}
                   </span>
 
-                  {/* Estado Amarillo: Requiere re-derivación */}
                   {padreFueModificado && (
                     <span className="text-[10px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300 shrink-0">
                       ⚠️ Requisito {hu.rf_origen} modificado
                     </span>
                   )}
 
-                  {/* Estado Verde: Ya fue re-derivado exitosamente */}
                   {!padreFueModificado && padreFueSincronizado && (
                     <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300 shrink-0">
                       ✓ Sincronizado con {hu.rf_origen}
@@ -292,7 +330,6 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {/* El botón de re-derivar SOLO aparece si está desactualizado (amarillo). Tras re-derivar, desaparece */}
                   {padreFueModificado && (
                     <button
                       type="button"
@@ -305,8 +342,8 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
                   )}
 
                   <button
-                    onClick={() => eliminarHistoria(index)}
-                    title="Descartar Historia"
+                    onClick={() => handleEliminarHistoria(index)}
+                    title="Descartar Historia y tareas derivadas"
                     className="text-xs text-red-500 hover:text-red-700 p-1.5 hover:bg-red-50 rounded transition shrink-0"
                   >
                     🗑️
@@ -346,28 +383,60 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
                 </div>
               </div>
 
-              <div className="bg-slate-50/70 p-3.5 rounded-lg border border-slate-100 space-y-2">
+              {/* Criterios de Aceptación: Edición manual en línea + Regeneración IA */}
+              <div className="bg-slate-50/70 p-3.5 rounded-lg border border-slate-100 space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
                     Criterios de Aceptación:
                   </span>
-                  {fueModificada && (
+                  <div className="flex items-center gap-2">
+                    {fueModificada && (
+                      <button
+                        type="button"
+                        disabled={criterioLoadingId === hu.id}
+                        onClick={() => handleRegenerarCriteriosIA(index)}
+                        className="text-[11px] font-semibold text-purple-700 hover:text-purple-900 bg-purple-100 border border-purple-300 px-2.5 py-1 rounded transition disabled:opacity-50"
+                      >
+                        {criterioLoadingId === hu.id ? "Actualizando..." : "✨ Regenerar criterios con IA"}
+                      </button>
+                    )}
                     <button
                       type="button"
-                      disabled={criterioLoadingId === hu.id}
-                      onClick={() => handleRegenerarCriteriosIA(index)}
-                      className="text-[11px] font-semibold text-purple-700 hover:text-purple-900 bg-purple-100 border border-purple-300 px-2.5 py-1 rounded transition disabled:opacity-50"
+                      onClick={() => handleAgregarCriterioManual(index)}
+                      className="text-[11px] font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 px-2.5 py-1 rounded transition hover:bg-slate-50"
                     >
-                      {criterioLoadingId === hu.id ? "Actualizando..." : "✨ Regenerar criterios con IA"}
+                      + Criterio
                     </button>
-                  )}
+                  </div>
                 </div>
 
-                <ul className="list-disc list-inside text-xs text-slate-700 space-y-1">
+                <div className="space-y-1.5">
                   {hu.criterios_aceptacion.map((criterio, i) => (
-                    <li key={i}>{criterio}</li>
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="text-slate-400 text-xs font-bold">•</span>
+                      <input
+                        type="text"
+                        value={criterio}
+                        onChange={(e) => handleEditarCriterioManual(index, i, e.target.value)}
+                        className="w-full text-xs text-slate-800 bg-white border border-slate-200 rounded px-2.5 py-1 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-200"
+                        placeholder="Criterio de aceptación comprobable..."
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleEliminarCriterioManual(index, i)}
+                        title="Eliminar este criterio"
+                        className="text-slate-400 hover:text-red-500 text-xs px-1.5 py-0.5 rounded transition"
+                      >
+                        ✕
+                      </button>
+                    </div>
                   ))}
-                </ul>
+                  {hu.criterios_aceptacion.length === 0 && (
+                    <p className="text-[11px] text-slate-400 italic">
+                      No hay criterios definidos. Agrega uno con "+ Criterio" o regenera con IA.
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           );

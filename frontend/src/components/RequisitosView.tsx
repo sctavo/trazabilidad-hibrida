@@ -5,12 +5,14 @@ interface RequisitosViewProps {
   requisitosIniciales: RequisitoItem[];
   onVolver: () => void;
   onConfirmar: (requisitosAprobados: RequisitoItem[], ruModificadosIds: string[]) => void;
+  onEliminarRequisitoCascade: (ruId: string) => void;
 }
 
 export const RequisitosView: React.FC<RequisitosViewProps> = ({
   requisitosIniciales,
   onVolver,
   onConfirmar,
+  onEliminarRequisitoCascade,
 }) => {
   const [requisitos, setRequisitos] = useState<RequisitoItem[]>(requisitosIniciales);
   const [ruEditados, setRuEditados] = useState<Set<string>>(new Set());
@@ -31,10 +33,16 @@ export const RequisitosView: React.FC<RequisitosViewProps> = ({
     setRuEditados((prev) => new Set(prev).add(ru.id));
   };
 
-  const eliminarRequisito = (index: number) => {
-    const id = requisitos[index].id;
-    setRequisitos(requisitos.filter((_, i) => i !== index));
-    setRuEditados((prev) => new Set(prev).add(id));
+  const handleEliminarRequisito = (index: number) => {
+    const ru = requisitos[index];
+    const confirmar = window.confirm(
+      `¿Deseas eliminar el requisito ${ru.id}? Esta acción eliminará en cascada todas las Historias de Usuario y Tareas Técnicas que dependan de él.`
+    );
+    if (!confirmar) return;
+
+    const actualizados = requisitos.filter((_, i) => i !== index);
+    setRequisitos(actualizados);
+    onEliminarRequisitoCascade(ru.id); // Notifica a App.tsx para podar HU y TSK
   };
 
   const agregarRequisitoManual = () => {
@@ -46,7 +54,7 @@ export const RequisitosView: React.FC<RequisitosViewProps> = ({
     const nuevoRu: RequisitoItem = {
       id: nuevoId,
       nombre: nuevoNombre.trim(),
-      descripcion: nuevaDescripcion.trim(), // Corregido: antes decía nuevoDescripcion
+      descripcion: nuevaDescripcion.trim(),
       fuente: nuevaFuente.trim() || "Entrada manual",
       estabilidad: nuevaEstabilidad,
       tipo: nuevoTipo,
@@ -54,7 +62,6 @@ export const RequisitosView: React.FC<RequisitosViewProps> = ({
     setRequisitos([...requisitos, nuevoRu]);
     setRuEditados((prev) => new Set(prev).add(nuevoId));
 
-    // Limpieza de campos
     setNuevoNombre("");
     setNuevaDescripcion("");
     setNuevaFuente("Documento base");
@@ -72,7 +79,7 @@ export const RequisitosView: React.FC<RequisitosViewProps> = ({
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6">
-      {/* Modal de Alerta de Impacto en la Trazabilidad */}
+      {/* Modal de Alerta de Impacto */}
       {mostrarModalImpacto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
           <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-xl">
@@ -82,11 +89,9 @@ export const RequisitosView: React.FC<RequisitosViewProps> = ({
             </div>
             <p className="text-xs text-slate-600 leading-relaxed">
               Has modificado los requisitos:{" "}
-              <strong className="text-slate-900">
-                {Array.from(ruEditados).join(", ")}
-              </strong>
-              . Las Historias de Usuario y Tareas Técnicas que dependan de estos artefactos quedarán marcadas como 
-              <span className="text-amber-700 font-semibold"> desincronizadas</span> en las siguientes etapas.
+              <strong className="text-slate-900">{Array.from(ruEditados).join(", ")}</strong>.
+              Las Historias de Usuario y Tareas Técnicas derivadas quedarán marcadas como
+              <span className="text-amber-700 font-semibold"> desincronizadas (amarillo)</span> para permitir re-derivación selectiva.
             </p>
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
               <button
@@ -118,9 +123,7 @@ export const RequisitosView: React.FC<RequisitosViewProps> = ({
             <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">
               Etapa 2: Requisitos de Usuario (RU)
             </span>
-            <span className="text-xs text-slate-500 font-medium">
-              {requisitos.length} requisitos
-            </span>
+            <span className="text-xs text-slate-500 font-medium">{requisitos.length} requisitos</span>
             {ruEditados.size > 0 && (
               <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300">
                 {ruEditados.size} con cambios pendientes
@@ -170,8 +173,8 @@ export const RequisitosView: React.FC<RequisitosViewProps> = ({
                 </div>
 
                 <button
-                  onClick={() => eliminarRequisito(index)}
-                  title="Descartar Requisito"
+                  onClick={() => handleEliminarRequisito(index)}
+                  title="Descartar Requisito y derivados en cascada"
                   className="text-xs text-red-500 hover:text-red-700 p-1.5 hover:bg-red-50 rounded transition shrink-0"
                 >
                   🗑️
@@ -230,12 +233,11 @@ export const RequisitosView: React.FC<RequisitosViewProps> = ({
         })}
       </div>
 
-      {/* Formulario Manual de Alta */}
+      {/* Formulario Manual */}
       <div className="bg-blue-50/40 p-5 rounded-xl border border-dashed border-blue-300 space-y-3">
         <label className="text-xs font-bold text-blue-900 uppercase tracking-wider block">
           + Agregar Requisito de Usuario Manual (Human-in-the-Loop)
         </label>
-        
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           <input
             type="text"
@@ -261,7 +263,6 @@ export const RequisitosView: React.FC<RequisitosViewProps> = ({
           className="w-full text-xs p-2 bg-white border border-slate-300 rounded-lg"
         />
 
-        {/* Selectores de Estabilidad y Tipo para usar setNuevaEstabilidad y setNuevoTipo */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
           <div>
             <label className="text-[11px] font-semibold text-slate-600 block mb-1">Estabilidad:</label>
@@ -297,7 +298,6 @@ export const RequisitosView: React.FC<RequisitosViewProps> = ({
         </div>
       </div>
 
-      {/* Botón de Consolidación */}
       <div className="flex justify-end pt-2">
         <button
           onClick={handleIntentarConsolidar}

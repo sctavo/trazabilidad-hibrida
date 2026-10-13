@@ -155,6 +155,62 @@ export default function App() {
     }
   };
 
+  // --- BORRADO EN CASCADA: RU -> HUs -> Tareas ---
+  const handleEliminarRequisitoCascade = (ruId: string) => {
+    // 1. Encontrar las HUs hijas
+    const husAEliminar = historias.filter((h) => h.rf_origen === ruId);
+    const huIdsAEliminar = new Set(husAEliminar.map((h) => h.id));
+
+    // 2. Podar las HUs
+    const historiasRestantes = historias.filter((h) => h.rf_origen !== ruId);
+    const historiasNormalizadas = historiasRestantes.map((h, i) => ({
+      ...h,
+      id: `HU-${String(i + 1).padStart(2, "0")}`,
+    }));
+    setHistorias(historiasNormalizadas);
+
+    // 3. Podar las Tareas nietas
+    const tareasRestantes = tareas.filter((t) => !huIdsAEliminar.has(t.hu_origen));
+    const tareasNormalizadas = tareasRestantes.map((t, i) => ({
+      ...t,
+      id: `TSK-${String(i + 1).padStart(2, "0")}`,
+    }));
+    setTareas(tareasNormalizadas);
+
+    // 4. Limpiar sets de estados
+    setRuModificadosIds((prev) => {
+      const nuevo = new Set(prev);
+      nuevo.delete(ruId);
+      return nuevo;
+    });
+    setRuSincronizadosIds((prev) => {
+      const nuevo = new Set(prev);
+      nuevo.delete(ruId);
+      return nuevo;
+    });
+  };
+
+  // --- BORRADO EN CASCADA: HU -> Tareas ---
+  const handleEliminarHistoriaCascade = (huId: string) => {
+    const tareasRestantes = tareas.filter((t) => t.hu_origen !== huId);
+    const tareasNormalizadas = tareasRestantes.map((t, i) => ({
+      ...t,
+      id: `TSK-${String(i + 1).padStart(2, "0")}`,
+    }));
+    setTareas(tareasNormalizadas);
+
+    setHuModificadasIds((prev) => {
+      const nuevo = new Set(prev);
+      nuevo.delete(huId);
+      return nuevo;
+    });
+    setHuSincronizadasIds((prev) => {
+      const nuevo = new Set(prev);
+      nuevo.delete(huId);
+      return nuevo;
+    });
+  };
+
   // Etapa 2 -> Etapa 3
   const handleRequisitosAprobados = async (
     aprobados: RequisitoItem[],
@@ -162,7 +218,6 @@ export default function App() {
   ) => {
     setRequisitos(aprobados);
 
-    // Si se modifica un RU: pasa a amarillo y abandona el verde (se habilita de nuevo la re-derivación)
     if (modificados.length > 0) {
       setRuModificadosIds((prev) => {
         const nuevo = new Set(prev);
@@ -201,7 +256,6 @@ export default function App() {
     }
   };
 
-  // Cuando se re-deriva un RU con éxito en Etapa 3: pasa de amarillo a verde y consume su oportunidad
   const handleMarcarRuSincronizado = (ruId: string) => {
     setRuModificadosIds((prev) => {
       const nuevo = new Set(prev);
@@ -211,7 +265,6 @@ export default function App() {
     setRuSincronizadosIds((prev) => new Set(prev).add(ruId));
   };
 
-  // Cuando se edita una HU en Etapa 3: alerta a Tareas (amarillo) y cancela su estado verde
   const handleRegistrarHuModificada = (huId: string) => {
     setHuModificadasIds((prev) => new Set(prev).add(huId));
     setHuSincronizadasIds((prev) => {
@@ -221,7 +274,6 @@ export default function App() {
     });
   };
 
-  // Cuando se re-deriva una HU con éxito en Etapa 4: pasa de amarillo a verde y consume su oportunidad
   const handleMarcarHuSincronizada = (huId: string) => {
     setHuModificadasIds((prev) => {
       const nuevo = new Set(prev);
@@ -231,10 +283,11 @@ export default function App() {
     setHuSincronizadasIds((prev) => new Set(prev).add(huId));
   };
 
-  // Etapa 3 -> Etapa 4
+  // Etapa 3 -> Etapa 4: Con generación automática de tareas para HUs nuevas
   const handleHistoriasAprobadas = async (aprobadas: HistoriaUsuarioItem[]) => {
     setHistorias(aprobadas);
 
+    // Caso A: Primera generación completa de tareas
     if (tareas.length === 0) {
       setCargandoTareas(true);
       try {
@@ -249,6 +302,45 @@ export default function App() {
         setTareas(data.tareas);
         setHuModificadasIds(new Set());
         setHuSincronizadasIds(new Set());
+        setEtapaActual(4);
+      } catch (error: any) {
+        alert(error.message);
+      } finally {
+        setCargandoTareas(false);
+      }
+      return;
+    }
+
+    // Caso B: Ya existen tareas, pero hay HUs nuevas que no tienen ninguna tarea asociada
+    const husSinTareas = aprobadas.filter((hu) => !tareas.some((t) => t.hu_origen === hu.id));
+
+    if (husSinTareas.length > 0) {
+      setCargandoTareas(true);
+      try {
+        const response = await fetch("http://localhost:8000/api/v1/generar/tareas/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ historias_usuario: husSinTareas }),
+        });
+
+        if (!response.ok) throw new Error("Error al derivar tareas para las historias nuevas.");
+        const data = await response.json();
+        const nuevasTareas: TareaItem[] = data.tareas;
+
+        // Combinar preservando el orden jerárquico por hu_origen
+        const todasTareas = [...tareas, ...nuevasTareas];
+        const ordenadas = todasTareas.sort((a, b) => {
+          const idxA = aprobadas.findIndex((h) => h.id === a.hu_origen);
+          const idxB = aprobadas.findIndex((h) => h.id === b.hu_origen);
+          return idxA - idxB;
+        });
+
+        const normalizadas = ordenadas.map((t, i) => ({
+          ...t,
+          id: `TSK-${String(i + 1).padStart(2, "0")}`,
+        }));
+
+        setTareas(normalizadas);
         setEtapaActual(4);
       } catch (error: any) {
         alert(error.message);
@@ -365,6 +457,7 @@ export default function App() {
                 requisitosIniciales={requisitos}
                 onVolver={() => setEtapaActual(1)}
                 onConfirmar={handleRequisitosAprobados}
+                onEliminarRequisitoCascade={handleEliminarRequisitoCascade}
               />
             )}
             {etapaActual === 3 && (
@@ -378,6 +471,7 @@ export default function App() {
                 onRegistrarHuModificada={handleRegistrarHuModificada}
                 onHistoriasActualizadas={(actualizadas) => setHistorias(actualizadas)}
                 onMarcarRuSincronizado={handleMarcarRuSincronizado}
+                onEliminarHistoriaCascade={handleEliminarHistoriaCascade}
               />
             )}
             {etapaActual === 4 && (

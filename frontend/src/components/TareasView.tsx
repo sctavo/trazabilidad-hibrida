@@ -41,11 +41,16 @@ export const TareasView: React.FC<TareasViewProps> = ({
 
   const eliminarTarea = (index: number) => {
     const actualizadas = tareas.filter((_, i) => i !== index);
-    setTareas(actualizadas);
-    onTareasActualizadas(actualizadas);
+    const normalizadas = actualizadas.map((t, i) => ({
+      ...t,
+      id: `TSK-${String(i + 1).padStart(2, "0")}`,
+    }));
+    setTareas(normalizadas);
+    onTareasActualizadas(normalizadas);
   };
 
-  const handleRegenerarTareasPorHU = async (huId: string) => {
+  // Re-derivar o generar por primera vez las tareas de una HU específica
+  const handleGenerarTareasPorHU = async (huId: string) => {
     const huObj = historiasDisponibles.find((h) => h.id === huId);
     if (!huObj) return;
 
@@ -56,7 +61,7 @@ export const TareasView: React.FC<TareasViewProps> = ({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(huObj),
       });
-      if (!resp.ok) throw new Error("Error al re-derivar tareas.");
+      if (!resp.ok) throw new Error("Error al derivar tareas para esta historia.");
       const data = await resp.json();
       const nuevasTareas: TareaItem[] = data.tareas;
 
@@ -92,8 +97,6 @@ export const TareasView: React.FC<TareasViewProps> = ({
 
       setTareas(normalizadas);
       onTareasActualizadas(normalizadas);
-
-      // Marca la HU como sincronizada (pasa a verde y retira el botón de re-derivar)
       onMarcarHuSincronizada(huId);
     } catch (err: any) {
       alert(err.message);
@@ -163,6 +166,11 @@ export const TareasView: React.FC<TareasViewProps> = ({
     setNuevasHoras(4);
   };
 
+  // Identificar qué HUs no tienen aún ninguna tarea generada
+  const husSinTareas = historiasDisponibles.filter(
+    (hu) => !tareas.some((t) => t.hu_origen === hu.id)
+  );
+
   const totalHoras = tareas.reduce((acc, t) => acc + (Number(t.estimacion_horas) || 0), 0);
 
   return (
@@ -190,6 +198,40 @@ export const TareasView: React.FC<TareasViewProps> = ({
         </button>
       </div>
 
+      {/* Banner de HUs nuevas sin tareas asignadas */}
+      {husSinTareas.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
+          <div className="flex items-center gap-2 text-amber-800 text-xs font-bold">
+            <span>⚠️</span>
+            <span>Historias de Usuario sin tareas técnicas asociadas:</span>
+          </div>
+          <div className="space-y-2">
+            {husSinTareas.map((hu) => (
+              <div
+                key={hu.id}
+                className="flex items-center justify-between bg-white p-2.5 rounded-lg border border-amber-200 text-xs"
+              >
+                <div className="flex items-center gap-2 truncate pr-2">
+                  <span className="font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200 shrink-0">
+                    {hu.id}
+                  </span>
+                  <span className="font-semibold text-slate-800 truncate">{hu.titulo}</span>
+                </div>
+                <button
+                  type="button"
+                  disabled={regenerandoHuId === hu.id}
+                  onClick={() => handleGenerarTareasPorHU(hu.id)}
+                  className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition shrink-0 disabled:opacity-50"
+                >
+                  {regenerandoHuId === hu.id ? "Generando..." : "✨ Derivar tareas con IA"}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Listado de Tareas */}
       <div className="space-y-3">
         {tareas.map((task, index) => {
           const huPadreFueModificada = huModificadasIds.has(task.hu_origen);
@@ -197,9 +239,9 @@ export const TareasView: React.FC<TareasViewProps> = ({
 
           let estiloContenedor = "border-slate-200 hover:border-slate-300";
           if (huPadreFueModificada) {
-            estiloContenedor = "border-amber-400 bg-amber-50/15 ring-1 ring-amber-200"; // Amarillo
+            estiloContenedor = "border-amber-400 bg-amber-50/15 ring-1 ring-amber-200";
           } else if (huPadreFueSincronizada) {
-            estiloContenedor = "border-emerald-500 bg-emerald-50/20 ring-1 ring-emerald-200"; // Verde
+            estiloContenedor = "border-emerald-500 bg-emerald-50/20 ring-1 ring-emerald-200";
           }
 
           return (
@@ -236,14 +278,12 @@ export const TareasView: React.FC<TareasViewProps> = ({
                     className="w-full text-xs font-semibold text-slate-800 border-b border-transparent hover:border-slate-300 focus:border-indigo-500 focus:outline-none py-0.5"
                   />
 
-                  {/* Estado Amarillo */}
                   {huPadreFueModificada && (
                     <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded border border-amber-300 shrink-0">
                       ⚠️ HU {task.hu_origen} desactualizada
                     </span>
                   )}
 
-                  {/* Estado Verde */}
                   {!huPadreFueModificada && huPadreFueSincronizada && (
                     <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300 shrink-0">
                       ✓ Sincronizado
@@ -259,12 +299,11 @@ export const TareasView: React.FC<TareasViewProps> = ({
               </div>
 
               <div className="flex items-center gap-2 self-end md:self-center shrink-0">
-                {/* Botón único de re-derivar: desaparece una vez completada la acción */}
                 {huPadreFueModificada && (
                   <button
                     type="button"
                     disabled={regenerandoHuId === task.hu_origen}
-                    onClick={() => handleRegenerarTareasPorHU(task.hu_origen)}
+                    onClick={() => handleGenerarTareasPorHU(task.hu_origen)}
                     className="text-[10px] font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-400 px-2 py-1 rounded transition shrink-0"
                   >
                     {regenerandoHuId === task.hu_origen ? "..." : `🔄 Re-derivar ${task.hu_origen}`}
