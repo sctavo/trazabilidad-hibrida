@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { LoginView } from "./components/LoginView";
+import { LandingPageView } from "./components/LandingPageView";
 import { DashboardView } from "./components/DashboardView";
 import { SeleccionModeloView } from "./components/SeleccionModeloView";
 import { IngestaView } from "./components/IngestaView";
@@ -419,7 +419,7 @@ export default function App() {
 
   if (!token || hayTokenAccionUrl) {
     return (
-      <LoginView
+      <LandingPageView
         tokenVerificacionUrl={tokenVerificacionUrl}
         tokenResetUrl={tokenResetUrl}
         tokenBajaUrl={tokenBajaUrl}
