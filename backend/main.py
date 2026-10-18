@@ -10,13 +10,19 @@ from api.routes import ingesta, generacion, auth, proyectos
 # Crea las tablas en PostgreSQL si no existen al iniciar la app
 Base.metadata.create_all(bind=engine)
 
-# Asegura que la columna modelo_ia exista si la tabla ya había sido creada previamente
+# Asegura que las columnas adicionales existan si las tablas ya habían sido creadas previamente
 try:
     with engine.connect() as conn:
         conn.execute(text("ALTER TABLE proyecto ADD COLUMN IF NOT EXISTS modelo_ia VARCHAR(100) DEFAULT 'google/gemini-2.5-flash-lite'"))
+        conn.execute(text("ALTER TABLE usuario ADD COLUMN IF NOT EXISTS apodo VARCHAR(50)"))
+        conn.execute(text("ALTER TABLE usuario ADD COLUMN IF NOT EXISTS email_verificado BOOLEAN DEFAULT TRUE"))
+        # Asignar apodo por defecto para cuentas existentes que no lo tengan
+        conn.execute(text("UPDATE usuario SET apodo = split_part(nombre, ' ', 1) WHERE apodo IS NULL OR apodo = ''"))
+        # Preservar cuentas existentes asegurando que queden verificadas
+        conn.execute(text("UPDATE usuario SET email_verificado = TRUE WHERE email_verificado IS NULL"))
         conn.commit()
 except Exception as e:
-    print(f"Aviso migración modelo_ia: {e}")
+    print(f"Aviso migración base de datos: {e}")
 
 app = FastAPI(title="Trazabilidad IA - Backend")
 

@@ -113,3 +113,12 @@ export const MODELOS_IA_CATALOGO: ModeloIAInfo[] = [
     colorText: "text-amber-700",
   },
 ];
+
+export interface Usuario {
+  id: string;
+  nombre: string;
+  apodo?: string;
+  email: string;
+  rol?: string;
+  email_verificado?: boolean;
+}

@@ -1,52 +1,291 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import type { Usuario } from "../types";
 
 interface LoginViewProps {
-  onLoginExitoso: (token: string, usuario: { id: string; nombre: string; email: string }) => void;
+  onLoginExitoso: (token: string, usuario: Usuario) => void;
+  tokenVerificacionUrl?: string | null;
+  tokenResetUrl?: string | null;
+  tokenBajaUrl?: string | null;
 }
 
-export const LoginView: React.FC<LoginViewProps> = ({ onLoginExitoso }) => {
-  const [esRegistro, setEsRegistro] = useState(false);
-  const [nombre, setNombre] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [cargando, setCargando] = useState(false);
+export const LoginView: React.FC<LoginViewProps> = ({
+  onLoginExitoso,
+  tokenVerificacionUrl,
+  tokenResetUrl,
+  tokenBajaUrl,
+}) => {
+  // Modos de vista: 'login' | 'registro' | 'recuperar' | 'reset_password' | 'verificando_email' | 'baja_cuenta' | 'registro_exitoso'
+  const [modo, setModo] = useState<
+    "login" | "registro" | "recuperar" | "reset_password" | "verificando_email" | "baja_cuenta" | "registro_exitoso"
+  >("login");
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Campos de formulario
+  const [nombre, setNombre] = useState("");
+  const [apodo, setApodo] = useState("");
+  const [email, setEmail] = useState("");
+  const [confirmarEmail, setConfirmarEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmarPassword, setConfirmarPassword] = useState("");
+
+  // Captcha
+  const [captchaPregunta, setCaptchaPregunta] = useState("");
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaRespuesta, setCaptchaRespuesta] = useState("");
+
+  // Estados de interfaz y feedback
+  const [error, setError] = useState<string | null>(null);
+  const [mensajeExito, setMensajeExito] = useState<string | null>(null);
+  const [cargando, setCargando] = useState(false);
+  const [emailNoVerificado, setEmailNoVerificado] = useState<string | null>(null);
+  const [ultimoDevLink, setUltimoDevLink] = useState<string | null>(null);
+
+  // Cargar Captcha
+  const cargarCaptcha = async () => {
+    try {
+      const resp = await fetch("http://localhost:8000/api/v1/auth/captcha");
+      if (resp.ok) {
+        const data = await resp.json();
+        setCaptchaPregunta(data.pregunta);
+        setCaptchaToken(data.token);
+        setCaptchaRespuesta("");
+      }
+    } catch {
+      setCaptchaPregunta("¿Cuánto es 4 + 3?");
+    }
+  };
+
+  // Detectar tokens en URL al montar
+  useEffect(() => {
+    if (tokenVerificacionUrl) {
+      setModo("verificando_email");
+      ejecutarVerificacionEmail(tokenVerificacionUrl);
+    } else if (tokenResetUrl) {
+      setModo("reset_password");
+    } else if (tokenBajaUrl) {
+      setModo("baja_cuenta");
+    }
+  }, [tokenVerificacionUrl, tokenResetUrl, tokenBajaUrl]);
+
+  useEffect(() => {
+    if (modo === "registro") {
+      cargarCaptcha();
+    }
+  }, [modo]);
+
+  const ejecutarVerificacionEmail = async (token: string) => {
+    setCargando(true);
+    setError(null);
+    try {
+      const resp = await fetch(`http://localhost:8000/api/v1/auth/verificar-email?token=${token}`);
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.detail || "Error al verificar correo.");
+      setMensajeExito(data.mensaje || "¡Correo verificado con éxito!");
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  // 1. Manejo de Inicio de Sesión
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setMensajeExito(null);
+    setEmailNoVerificado(null);
     setCargando(true);
 
     try {
-      if (esRegistro) {
-        const resp = await fetch("http://localhost:8000/api/v1/auth/registro", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ nombre, email, password }),
-        });
-        if (!resp.ok) {
-          const err = await resp.json();
-          throw new Error(err.detail || "Error en el registro.");
-        }
-        const data = await resp.json();
-        onLoginExitoso(data.access_token, data.usuario);
-      } else {
-        const formData = new URLSearchParams();
-        formData.append("username", email);
-        formData.append("password", password);
+      const formData = new URLSearchParams();
+      formData.append("username", email.trim().toLowerCase());
+      formData.append("password", password);
 
-        const resp = await fetch("http://localhost:8000/api/v1/auth/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: formData.toString(),
-        });
-        if (!resp.ok) {
-          const err = await resp.json();
-          throw new Error(err.detail || "Credenciales inválidas.");
+      const resp = await fetch("http://localhost:8000/api/v1/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: formData.toString(),
+      });
+
+      const data = await resp.json();
+
+      if (!resp.ok) {
+        if (resp.status === 403 && data.detail?.includes("no ha sido verificado")) {
+          setEmailNoVerificado(email.trim().toLowerCase());
+          throw new Error(data.detail);
         }
-        const data = await resp.json();
-        onLoginExitoso(data.access_token, data.usuario);
+        throw new Error(data.detail || "Credenciales inválidas.");
       }
+
+      onLoginExitoso(data.access_token, data.usuario);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  // 2. Manejo de Registro
+  const handleRegistro = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setMensajeExito(null);
+
+    // Validaciones locales
+    if (email.trim().toLowerCase() !== confirmarEmail.trim().toLowerCase()) {
+      setError("Los correos electrónicos ingresados no coinciden.");
+      return;
+    }
+    if (password !== confirmarPassword) {
+      setError("Las contraseñas ingresadas no coinciden.");
+      return;
+    }
+    if (password.length < 8) {
+      setError("La contraseña debe tener al menos 8 caracteres.");
+      return;
+    }
+    if (!/[A-Z]/.test(password)) {
+      setError("La contraseña debe contener al menos una letra mayúscula.");
+      return;
+    }
+    if (!captchaRespuesta.trim()) {
+      setError("Por favor responde la pregunta de verificación anti-robot.");
+      return;
+    }
+
+    setCargando(true);
+    try {
+      const resp = await fetch("http://localhost:8000/api/v1/auth/registro", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nombre: nombre.trim(),
+          apodo: apodo.trim() || nombre.trim().split(" ")[0],
+          email: email.trim().toLowerCase(),
+          confirmar_email: confirmarEmail.trim().toLowerCase(),
+          password,
+          confirmar_password: confirmarPassword,
+          captcha_token: captchaToken,
+          captcha_respuesta: captchaRespuesta.trim(),
+        }),
+      });
+
+      const data = await resp.json();
+      if (!resp.ok) {
+        cargarCaptcha();
+        throw new Error(data.detail || "Error al registrar la cuenta.");
+      }
+
+      setUltimoDevLink(data.dev_link || null);
+      setModo("registro_exitoso");
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  // 3. Reenviar Confirmación
+  const handleReenviarConfirmacion = async () => {
+    if (!emailNoVerificado && !email) return;
+    setCargando(true);
+    setError(null);
+    try {
+      const targetEmail = emailNoVerificado || email;
+      const resp = await fetch("http://localhost:8000/api/v1/auth/reenviar-confirmacion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: targetEmail.trim().toLowerCase() }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.detail || "Error al reenviar correo.");
+      setMensajeExito(data.mensaje);
+      setUltimoDevLink(data.dev_link || null);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  // 4. Solicitar Recuperación de Contraseña
+  const handleSolicitarRecuperacion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) {
+      setError("Ingresa tu correo electrónico.");
+      return;
+    }
+    setCargando(true);
+    setError(null);
+    try {
+      const resp = await fetch("http://localhost:8000/api/v1/auth/solicitar-recuperacion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
+      const data = await resp.json();
+      setMensajeExito(data.mensaje);
+      setUltimoDevLink(data.dev_link || null);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  // 5. Restablecer Contraseña
+  const handleRestablecerPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password !== confirmarPassword) {
+      setError("Las contraseñas no coinciden.");
+      return;
+    }
+    if (password.length < 8 || !/[A-Z]/.test(password)) {
+      setError("La contraseña debe tener mín. 8 caracteres y al menos 1 letra mayúscula.");
+      return;
+    }
+    setCargando(true);
+    setError(null);
+    try {
+      const resp = await fetch("http://localhost:8000/api/v1/auth/restablecer-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: tokenResetUrl,
+          nueva_password: password,
+          confirmar_password: confirmarPassword,
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.detail || "Error al restablecer contraseña.");
+      setMensajeExito(data.mensaje);
+      setTimeout(() => {
+        setModo("login");
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }, 2500);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  // 6. Confirmar Baja Definitiva de Cuenta
+  const handleConfirmarBaja = async () => {
+    setCargando(true);
+    setError(null);
+    try {
+      const resp = await fetch("http://localhost:8000/api/v1/auth/confirmar-baja-cuenta", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: tokenBajaUrl }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.detail || "Error al dar de baja la cuenta.");
+      setMensajeExito(data.mensaje);
+      setTimeout(() => {
+        setModo("login");
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }, 3000);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -56,87 +295,504 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginExitoso }) => {
 
   return (
     <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
-      <div className="bg-white border border-slate-200 shadow-sm rounded-2xl p-8 max-w-md w-full space-y-6">
-        <div>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">
+      <div className="bg-white border border-slate-200 shadow-md rounded-2xl p-7 sm:p-8 max-w-md w-full space-y-5">
+        
+        {/* Cabecera ReqGen */}
+        <div className="text-center">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200 inline-block mb-2">
             ReqGen
           </span>
-          <h2 className="text-xl font-bold text-slate-900 mt-2">
-            {esRegistro ? "Crear cuenta de analista" : "Iniciar sesión en la plataforma"}
+          <h2 className="text-xl font-bold text-slate-900">
+            {modo === "login" && "Iniciar sesión en ReqGen"}
+            {modo === "registro" && "Crear cuenta de analista"}
+            {modo === "recuperar" && "Recuperar contraseña"}
+            {modo === "reset_password" && "Restablecer contraseña"}
+            {modo === "verificando_email" && "Verificación de correo"}
+            {modo === "baja_cuenta" && "Confirmar baja de cuenta"}
+            {modo === "registro_exitoso" && "¡Confirmación enviada!"}
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            Control de especificación, artefactos ágiles y persistencia relacional.
+            Plataforma de especificación formal y trazabilidad de requisitos.
           </p>
         </div>
 
+        {/* Mensaje de Error */}
         {error && (
-          <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg">
-            {error}
+          <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-start gap-2">
+            <span>⚠️</span>
+            <div className="flex-1">{error}</div>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
-          {esRegistro && (
+        {/* Mensaje de Éxito */}
+        {mensajeExito && (
+          <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl flex items-start gap-2">
+            <span>✓</span>
+            <div className="flex-1">{mensajeExito}</div>
+          </div>
+        )}
+
+        {/* Aviso de Email No Verificado con botón para reenviar */}
+        {emailNoVerificado && (
+          <div className="p-3.5 bg-amber-50 border border-amber-200 text-amber-900 text-xs rounded-xl space-y-2">
+            <div className="font-semibold flex items-center gap-1.5">
+              <span>✉️</span> Correo pendiente de verificación
+            </div>
+            <p className="text-[11px] text-amber-800">
+              Para ingresar debes haber confirmado tu email ({emailNoVerificado}). Revisa tu bandeja de entrada o spam.
+            </p>
+            <button
+              type="button"
+              onClick={handleReenviarConfirmacion}
+              disabled={cargando}
+              className="text-xs font-bold text-amber-800 hover:text-amber-950 underline flex items-center gap-1"
+            >
+              <span>{cargando ? "Reenviando..." : "↻ Reenviar correo de confirmación"}</span>
+            </button>
+          </div>
+        )}
+
+        {/* ================================================================= */}
+        {/* VISTA 1: REGISTRO EXITOSO (ESPERA CONFIRMACIÓN)                  */}
+        {/* ================================================================= */}
+        {modo === "registro_exitoso" && (
+          <div className="text-center space-y-4 py-2">
+            <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center text-3xl mx-auto shadow-inner">
+              ✉️
+            </div>
+            <div className="space-y-1.5">
+              <h3 className="font-bold text-base text-slate-800">Revisa tu bandeja de entrada</h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Hemos enviado un enlace de confirmación a <strong>{email}</strong>. Por seguridad, no podrás ingresar al sistema hasta que valides tu correo.
+              </p>
+            </div>
+
+            {ultimoDevLink && (
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-left text-xs space-y-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">
+                  Modo Desarrollo / Local
+                </span>
+                <p className="text-[11px] text-slate-500">
+                  Simulación de correo recibido. Haz clic para activar tu cuenta:
+                </p>
+                <a
+                  href={ultimoDevLink}
+                  className="block text-xs font-semibold text-blue-600 hover:underline break-all"
+                >
+                  Confirmar Email Ahora →
+                </a>
+              </div>
+            )}
+
+            <button
+              onClick={() => {
+                setModo("login");
+                setError(null);
+                setMensajeExito(null);
+              }}
+              className="w-full py-2.5 bg-slate-900 hover:bg-black text-white text-xs font-semibold rounded-xl shadow-xs transition"
+            >
+              Ir a Iniciar Sesión
+            </button>
+          </div>
+        )}
+
+        {/* ================================================================= */}
+        {/* VISTA 2: VERIFICANDO EMAIL DESDE LINK                             */}
+        {/* ================================================================= */}
+        {modo === "verificando_email" && (
+          <div className="text-center space-y-4 py-3">
+            {cargando ? (
+              <div className="space-y-2">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="text-xs text-slate-500">Validando tu token de confirmación...</p>
+              </div>
+            ) : mensajeExito ? (
+              <div className="space-y-3">
+                <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-2xl mx-auto">
+                  ✓
+                </div>
+                <h3 className="font-bold text-base text-slate-800">¡Cuenta activada con éxito!</h3>
+                <p className="text-xs text-slate-600">
+                  Tu correo electrónico ha sido verificado. Ya puedes iniciar sesión con tu contraseña.
+                </p>
+                <button
+                  onClick={() => {
+                    setModo("login");
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                  }}
+                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-xs transition"
+                >
+                  Entrar a ReqGen
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <button
+                  onClick={() => {
+                    setModo("login");
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                  }}
+                  className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition"
+                >
+                  Volver al inicio
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ================================================================= */}
+        {/* VISTA 3: INICIO DE SESIÓN                                         */}
+        {/* ================================================================= */}
+        {modo === "login" && (
+          <form onSubmit={handleLogin} className="space-y-4 text-xs">
             <div>
-              <label className="font-semibold text-slate-700 block mb-1">Nombre completo:</label>
+              <label className="font-semibold text-slate-700 block mb-1">Correo electrónico:</label>
               <input
-                type="text"
+                type="email"
                 required
-                value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
-                placeholder="Gustavo Sánchez"
-                className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="analista@empresa.com"
+                className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
               />
             </div>
-          )}
 
-          <div>
-            <label className="font-semibold text-slate-700 block mb-1">Correo electrónico:</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="analista@empresa.com"
-              className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="font-semibold text-slate-700">Contraseña:</label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setModo("recuperar");
+                    setError(null);
+                    setMensajeExito(null);
+                  }}
+                  className="text-[11px] text-blue-600 hover:text-blue-700 font-medium hover:underline"
+                >
+                  ¿Olvidaste tu contraseña?
+                </button>
+              </div>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={cargando}
+              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-xs transition disabled:opacity-50"
+            >
+              {cargando ? "Iniciando sesión..." : "Entrar al sistema"}
+            </button>
+
+            <div className="border-t border-slate-100 pt-3 text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setModo("registro");
+                  setError(null);
+                  setMensajeExito(null);
+                }}
+                className="text-xs text-blue-600 hover:text-blue-800 font-semibold hover:underline"
+              >
+                ¿No tienes cuenta? Regístrate aquí
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* ================================================================= */}
+        {/* VISTA 4: REGISTRO CON DOBLE CORREO, CONTRASEÑA, APODO Y CAPTCHA   */}
+        {/* ================================================================= */}
+        {modo === "registro" && (
+          <form onSubmit={handleRegistro} className="space-y-3.5 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Nombre completo:</label>
+                <input
+                  type="text"
+                  required
+                  value={nombre}
+                  onChange={(e) => setNombre(e.target.value)}
+                  placeholder="Gustavo Sánchez"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">
+                  Apodo (Dashboard):
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={apodo}
+                  onChange={(e) => setApodo(e.target.value)}
+                  placeholder="Gus"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  title="Este apodo aparecerá en el saludo de tu Dashboard principal"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="font-semibold text-slate-700 block mb-1">Correo electrónico:</label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="analista@empresa.com"
+                className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="font-semibold text-slate-700 block mb-1">
+                Confirmar correo electrónico:
+              </label>
+              <input
+                type="email"
+                required
+                value={confirmarEmail}
+                onChange={(e) => setConfirmarEmail(e.target.value)}
+                placeholder="Repite tu correo para verificar"
+                className={`w-full p-2.5 bg-slate-50 border rounded-xl focus:bg-white focus:outline-none focus:ring-2 ${
+                  confirmarEmail && email.toLowerCase() !== confirmarEmail.toLowerCase()
+                    ? "border-red-400 focus:ring-red-200"
+                    : "border-slate-300 focus:ring-blue-500/20 focus:border-blue-500"
+                }`}
+              />
+            </div>
+
+            <div>
+              <label className="font-semibold text-slate-700 block mb-1">
+                Contraseña <span className="text-[10px] font-normal text-slate-400">(mín. 8 caracteres, 1 mayúscula)</span>:
+              </label>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="font-semibold text-slate-700 block mb-1">
+                Confirmar contraseña:
+              </label>
+              <input
+                type="password"
+                required
+                value={confirmarPassword}
+                onChange={(e) => setConfirmarPassword(e.target.value)}
+                placeholder="Repite tu contraseña"
+                className={`w-full p-2.5 bg-slate-50 border rounded-xl focus:bg-white focus:outline-none focus:ring-2 ${
+                  confirmarPassword && password !== confirmarPassword
+                    ? "border-red-400 focus:ring-red-200"
+                    : "border-slate-300 focus:ring-blue-500/20 focus:border-blue-500"
+                }`}
+              />
+            </div>
+
+            {/* Desafío Captcha */}
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+                  <span>🤖</span> Verificación anti-robot:
+                </span>
+                <button
+                  type="button"
+                  onClick={cargarCaptcha}
+                  className="text-[10px] text-blue-600 hover:text-blue-800 font-medium"
+                >
+                  ↻ Cambiar
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1.5 bg-white border border-slate-300 rounded-lg font-mono font-bold text-xs text-slate-800 tracking-wider">
+                  {captchaPregunta || "¿Cuánto es 5 + 3?"}
+                </span>
+                <input
+                  type="text"
+                  required
+                  value={captchaRespuesta}
+                  onChange={(e) => setCaptchaRespuesta(e.target.value)}
+                  placeholder="Tu respuesta"
+                  className="w-28 p-2 bg-white border border-slate-300 rounded-lg text-center font-bold focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={cargando}
+              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-xs transition disabled:opacity-50"
+            >
+              {cargando ? "Registrando..." : "Crear cuenta y validar email"}
+            </button>
+
+            <div className="border-t border-slate-100 pt-3 text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setModo("login");
+                  setError(null);
+                  setMensajeExito(null);
+                }}
+                className="text-xs text-blue-600 hover:text-blue-800 font-semibold hover:underline"
+              >
+                ¿Ya tienes cuenta? Inicia sesión aquí
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* ================================================================= */}
+        {/* VISTA 5: SOLICITAR RECUPERACIÓN DE CONTRASEÑA                    */}
+        {/* ================================================================= */}
+        {modo === "recuperar" && (
+          <form onSubmit={handleSolicitarRecuperacion} className="space-y-4 text-xs">
+            <p className="text-slate-600 text-xs">
+              Ingresa el correo electrónico asociado a tu cuenta de analista. Te enviaremos un enlace para crear una nueva contraseña.
+            </p>
+
+            <div>
+              <label className="font-semibold text-slate-700 block mb-1">Correo electrónico:</label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="analista@empresa.com"
+                className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              />
+            </div>
+
+            {ultimoDevLink && (
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-left text-xs space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">
+                  Modo Desarrollo / Local
+                </span>
+                <p className="text-[11px] text-slate-500">Enlace de recuperación generado:</p>
+                <a href={ultimoDevLink} className="block text-xs font-semibold text-blue-600 hover:underline break-all">
+                  Restablecer Contraseña →
+                </a>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={cargando}
+              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-xs transition disabled:opacity-50"
+            >
+              {cargando ? "Enviando..." : "Enviar enlace de recuperación"}
+            </button>
+
+            <div className="border-t border-slate-100 pt-3 text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setModo("login");
+                  setError(null);
+                  setMensajeExito(null);
+                }}
+                className="text-xs text-slate-600 hover:text-slate-800 font-semibold"
+              >
+                ← Volver a Iniciar Sesión
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* ================================================================= */}
+        {/* VISTA 6: RESTABLECER CONTRASEÑA CON TOKEN                         */}
+        {/* ================================================================= */}
+        {modo === "reset_password" && (
+          <form onSubmit={handleRestablecerPassword} className="space-y-4 text-xs">
+            <p className="text-slate-600 text-xs">
+              Crea tu nueva contraseña. Debe tener al menos 8 caracteres y una letra mayúscula.
+            </p>
+
+            <div>
+              <label className="font-semibold text-slate-700 block mb-1">Nueva contraseña:</label>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="font-semibold text-slate-700 block mb-1">Confirmar nueva contraseña:</label>
+              <input
+                type="password"
+                required
+                value={confirmarPassword}
+                onChange={(e) => setConfirmarPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={cargando}
+              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-xs transition disabled:opacity-50"
+            >
+              {cargando ? "Actualizando clave..." : "Guardar nueva contraseña"}
+            </button>
+          </form>
+        )}
+
+        {/* ================================================================= */}
+        {/* VISTA 7: CONFIRMAR BAJA DEFINITIVA DE CUENTA                      */}
+        {/* ================================================================= */}
+        {modo === "baja_cuenta" && (
+          <div className="space-y-4 text-center py-2 text-xs">
+            <div className="w-14 h-14 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-2xl mx-auto">
+              ⚠️
+            </div>
+            <div className="space-y-2">
+              <h3 className="font-bold text-base text-slate-900">¿Confirmar baja definitiva?</h3>
+              <p className="text-slate-600 leading-relaxed text-[11px]">
+                Esta acción eliminará de forma irreversible tu cuenta de usuario, tus proyectos y todos los requisitos, historias de usuario y tareas asociados.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleConfirmarBaja}
+              disabled={cargando}
+              className="w-full py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl shadow-xs transition disabled:opacity-50"
+            >
+              {cargando ? "Eliminando cuenta..." : "Sí, dar de baja definitivamente"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setModo("login");
+                window.history.replaceState({}, document.title, window.location.pathname);
+              }}
+              className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl transition"
+            >
+              Cancelar y volver
+            </button>
           </div>
+        )}
 
-          <div>
-            <label className="font-semibold text-slate-700 block mb-1">Contraseña:</label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={cargando}
-            className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-sm transition disabled:opacity-50"
-          >
-            {cargando ? "Autenticando..." : esRegistro ? "Registrarse" : "Entrar al sistema"}
-          </button>
-        </form>
-
-        <div className="border-t border-slate-100 pt-4 text-center">
-          <button
-            type="button"
-            onClick={() => {
-              setEsRegistro(!esRegistro);
-              setError(null);
-            }}
-            className="text-xs text-blue-600 hover:text-blue-800 font-medium"
-          >
-            {esRegistro
-              ? "¿Ya tienes cuenta? Inicia sesión aquí"
-              : "¿No tienes cuenta? Regístrate aquí"}
-          </button>
-        </div>
       </div>
     </div>
   );

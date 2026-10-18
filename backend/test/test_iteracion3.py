@@ -134,14 +134,39 @@ def obtener_token_autenticado_test(email_prefix: str = "analista_it3") -> tuple:
     email = f"{email_prefix}_{unique_id}@tesis.com"
     password = "PasswordTest123!"
 
-    # 1. Registro
+    # Obtener desafío de captcha
+    captcha_res = client.get("/api/v1/auth/captcha")
+    c_data = captcha_res.json()
+    import jwt
+    from api.services.captcha_service import SECRET_KEY, ALGORITHM
+    c_ans = jwt.decode(c_data["token"], SECRET_KEY, algorithms=[ALGORITHM])["ans"]
+
+    # 1. Registro con todos los campos nuevos de Iteración 4
     reg_res = client.post(
         "/api/v1/auth/registro",
-        json={"nombre": f"Analista {unique_id}", "email": email, "password": password}
+        json={
+            "nombre": f"Analista {unique_id}",
+            "apodo": f"Ana{unique_id}",
+            "email": email,
+            "confirmar_email": email,
+            "password": password,
+            "confirmar_password": password,
+            "captcha_token": c_data["token"],
+            "captcha_respuesta": str(c_ans),
+        }
     )
-    assert reg_res.status_code in [200, 201]
+    assert reg_res.status_code == 200
 
-    # 2. Login con OAuth2PasswordRequestForm (form-data: username & password)
+    # 2. Marcar verificado en BD para autorizar inicio de sesión en pruebas
+    from database import SessionLocal
+    import models
+    db = SessionLocal()
+    usr = db.query(models.Usuario).filter(models.Usuario.email == email).first()
+    usr.email_verificado = True
+    db.commit()
+    db.close()
+
+    # 3. Login con OAuth2PasswordRequestForm
     login_res = client.post(
         "/api/v1/auth/login",
         data={"username": email, "password": password}

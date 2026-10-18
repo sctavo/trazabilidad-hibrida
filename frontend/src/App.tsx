@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { LoginView } from "./components/LoginView";
 import { DashboardView } from "./components/DashboardView";
 import { SeleccionModeloView } from "./components/SeleccionModeloView";
@@ -6,14 +6,30 @@ import { IngestaView } from "./components/IngestaView";
 import { RequisitosView } from "./components/RequisitosView";
 import { HistoriasUsuarioView } from "./components/HistoriasUsuarioView";
 import { TareasView } from "./components/TareasView";
-import type { RequisitoItem, HistoriaUsuarioItem, TareaItem } from "./types";
+import type { RequisitoItem, HistoriaUsuarioItem, TareaItem, Usuario } from "./types";
 import { MODELOS_IA_CATALOGO } from "./types";
 
 export default function App() {
   const [token, setToken] = useState<string | null>(localStorage.getItem("token"));
-  const [usuario, setUsuario] = useState<{ id: string; nombre: string; email: string } | null>(
+  const [usuario, setUsuario] = useState<Usuario | null>(
     localStorage.getItem("usuario") ? JSON.parse(localStorage.getItem("usuario")!) : null
   );
+
+  // Tokens pasados por URL al hacer clic en enlaces de correo
+  const [tokenVerificacionUrl, setTokenVerificacionUrl] = useState<string | null>(null);
+  const [tokenResetUrl, setTokenResetUrl] = useState<string | null>(null);
+  const [tokenBajaUrl, setTokenBajaUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const vEmail = params.get("verificar_email");
+    const rToken = params.get("reset_token");
+    const bToken = params.get("baja_token");
+
+    if (vEmail) setTokenVerificacionUrl(vEmail);
+    if (rToken) setTokenResetUrl(rToken);
+    if (bToken) setTokenBajaUrl(bToken);
+  }, []);
 
   // Control de vista: "dashboard" (pantalla de bienvenida y proyectos) vs "workspace" (pipeline de 4 etapas)
   const [vistaActual, setVistaActual] = useState<"dashboard" | "workspace">("dashboard");
@@ -394,14 +410,27 @@ export default function App() {
     }
   };
 
-  if (!token) {
+  const handlePerfilActualizado = (usuarioActualizado: Usuario) => {
+    setUsuario(usuarioActualizado);
+    localStorage.setItem("usuario", JSON.stringify(usuarioActualizado));
+  };
+
+  const hayTokenAccionUrl = Boolean(tokenVerificacionUrl || tokenResetUrl || tokenBajaUrl);
+
+  if (!token || hayTokenAccionUrl) {
     return (
       <LoginView
+        tokenVerificacionUrl={tokenVerificacionUrl}
+        tokenResetUrl={tokenResetUrl}
+        tokenBajaUrl={tokenBajaUrl}
         onLoginExitoso={(jwt, usr) => {
           setToken(jwt);
           setUsuario(usr);
           localStorage.setItem("token", jwt);
           localStorage.setItem("usuario", JSON.stringify(usr));
+          setTokenVerificacionUrl(null);
+          setTokenResetUrl(null);
+          setTokenBajaUrl(null);
           setVistaActual("dashboard");
         }}
       />
@@ -417,6 +446,7 @@ export default function App() {
         onAbrirProyecto={handleAbrirProyectoDesdeDashboard}
         onCrearNuevoProyecto={handleCrearNuevoDesdeDashboard}
         onCerrarSesion={handleCerrarSesion}
+        onPerfilActualizado={handlePerfilActualizado}
       />
     );
   }
@@ -429,7 +459,7 @@ export default function App() {
         <header className="flex flex-col sm:flex-row items-center justify-between bg-white p-4 rounded-xl border border-slate-200 shadow-xs gap-3">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs">
-              {usuario?.nombre.slice(0, 2).toUpperCase() || "AN"}
+              {(usuario?.apodo || usuario?.nombre || "AN").slice(0, 2).toUpperCase()}
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -465,7 +495,9 @@ export default function App() {
                   );
                 })()}
               </div>
-              <span className="text-[11px] text-slate-400 block">Analista: {usuario?.email}</span>
+              <span className="text-[11px] text-slate-400 block">
+                Analista: {usuario?.apodo ? `@${usuario.apodo} (${usuario.nombre})` : usuario?.email}
+              </span>
             </div>
           </div>
 

@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { MODELOS_IA_CATALOGO, type ProyectoResumen } from "../types";
+import { MODELOS_IA_CATALOGO, type ProyectoResumen, type Usuario } from "../types";
+import { PerfilConfiguracionModal } from "./PerfilConfiguracionModal";
 
 interface DashboardViewProps {
   token: string;
-  usuario: { id: string; nombre: string; email: string } | null;
+  usuario: Usuario | null;
   onAbrirProyecto: (id: string) => void;
   onCrearNuevoProyecto: () => void;
   onCerrarSesion: () => void;
+  onPerfilActualizado?: (usuario: Usuario) => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -15,6 +17,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onAbrirProyecto,
   onCrearNuevoProyecto,
   onCerrarSesion,
+  onPerfilActualizado,
 }) => {
   const [proyectos, setProyectos] = useState<ProyectoResumen[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -22,6 +25,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [busqueda, setBusqueda] = useState("");
   const [proyectoAEliminar, setProyectoAEliminar] = useState<ProyectoResumen | null>(null);
   const [eliminando, setEliminando] = useState(false);
+  const [mostrarPerfilModal, setMostrarPerfilModal] = useState(false);
 
   const fetchProyectos = async () => {
     setCargando(true);
@@ -208,20 +212,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <div className="flex items-center gap-2.5 text-right">
-              <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-300 text-slate-700 flex items-center justify-center font-bold text-xs">
-                {usuario?.nombre?.slice(0, 2).toUpperCase() || "AN"}
+              <div className="w-8 h-8 rounded-full bg-blue-100 border border-blue-200 text-blue-700 flex items-center justify-center font-bold text-xs shadow-2xs">
+                {(usuario?.apodo || usuario?.nombre || "AN").slice(0, 2).toUpperCase()}
               </div>
               <div className="hidden sm:block">
                 <span className="text-xs font-bold text-slate-800 block leading-tight">
-                  {usuario?.nombre || "Analista"}
+                  {usuario?.apodo ? `@${usuario.apodo}` : usuario?.nombre || "Analista"}
                 </span>
                 <span className="text-[11px] text-slate-500 block leading-tight">
                   {usuario?.email}
                 </span>
               </div>
             </div>
+
+            <button
+              onClick={() => setMostrarPerfilModal(true)}
+              className="text-xs font-semibold px-3 py-1.5 border border-slate-200 text-slate-700 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50/50 rounded-lg transition flex items-center gap-1.5"
+              title="Configuración de perfil (apodo, contraseña, baja)"
+            >
+              <span>⚙️</span>
+              <span className="hidden sm:inline">Mi Perfil</span>
+            </button>
 
             <button
               onClick={onCerrarSesion}
@@ -243,8 +256,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {/* Cabecera del listado */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-                  Mis Proyectos
+                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider block mb-0.5">
+                  Panel de Control
+                </span>
+                <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                  <span>Hola, {usuario?.apodo || usuario?.nombre || "Analista"}</span>
+                  <span>👋</span>
                 </h1>
                 <p className="text-xs text-slate-500 mt-0.5">
                   Selecciona un proyecto para continuar la especificación o inicia uno nuevo.
@@ -578,6 +595,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </p>
               </div>
 
+              {/* Perfil del Usuario y Accesos */}
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-full bg-blue-600 text-white font-bold text-xs flex items-center justify-center shrink-0">
+                    {(usuario?.apodo || usuario?.nombre || "AN").slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="font-bold text-xs text-slate-800 block truncate">
+                      {usuario?.apodo ? `@${usuario.apodo}` : usuario?.nombre || "Analista"}
+                    </span>
+                    <span className="text-[10px] text-slate-500 block truncate">
+                      {usuario?.email}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMostrarPerfilModal(true)}
+                  className="text-[11px] font-bold text-blue-600 hover:text-blue-800 hover:underline px-1.5 py-1"
+                >
+                  Editar
+                </button>
+              </div>
+
               {/* Botón de acción rápida */}
               <button
                 onClick={onCrearNuevoProyecto}
@@ -589,6 +630,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </aside>
         </div>
       </main>
+
+      {/* Modal de Configuración de Perfil */}
+      {mostrarPerfilModal && usuario && (
+        <PerfilConfiguracionModal
+          token={token}
+          usuario={usuario}
+          isOpen={mostrarPerfilModal}
+          onClose={() => setMostrarPerfilModal(false)}
+          onPerfilActualizado={(usrActualizado) => {
+            if (onPerfilActualizado) {
+              onPerfilActualizado(usrActualizado);
+            }
+          }}
+        />
+      )}
     </div>
   );
 };

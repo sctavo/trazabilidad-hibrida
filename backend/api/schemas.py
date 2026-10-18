@@ -65,11 +65,20 @@ class GenerarTareasRequest(BaseModel):
     historias_usuario: List[HistoriaUsuarioItem]
     modelo: Optional[str] = "google/gemini-2.5-flash-lite"
 
-# ------------------------------Esquemas de Autenticación ------------------------
+# ------------------------------Esquemas de Autenticación y Perfil ------------------------
+class CaptchaResponse(BaseModel):
+    pregunta: str
+    token: str
+
 class UsuarioRegistroRequest(BaseModel):
     nombre: str
+    apodo: str
     email: str
+    confirmar_email: str
     password: str
+    confirmar_password: str
+    captcha_token: str
+    captcha_respuesta: str
 
 class UsuarioLoginRequest(BaseModel):
     email: str
@@ -78,8 +87,10 @@ class UsuarioLoginRequest(BaseModel):
 class UsuarioResponse(BaseModel):
     id: str
     nombre: str
+    apodo: Optional[str] = None
     email: str
     rol: str
+    email_verificado: bool = True
 
     class Config:
         from_attributes = True
@@ -88,6 +99,28 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str
     usuario: UsuarioResponse
+
+class ReenviarConfirmacionRequest(BaseModel):
+    email: str
+
+class SolicitarRecuperacionRequest(BaseModel):
+    email: str
+
+class RestablecerPasswordRequest(BaseModel):
+    token: str
+    nueva_password: str
+    confirmar_password: str
+
+class ActualizarPerfilRequest(BaseModel):
+    apodo: str
+
+class CambiarPasswordRequest(BaseModel):
+    password_actual: str
+    nueva_password: str
+    confirmar_password: str
+
+class ConfirmarBajaRequest(BaseModel):
+    token: str
 
 # --- Esquemas de Persistencia de Proyectos  ---
 class GuardarProyectoRequest(BaseModel):
