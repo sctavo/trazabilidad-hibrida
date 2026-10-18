@@ -269,7 +269,7 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
             <span className="text-xs text-slate-500 font-medium">{historias.length} historias</span>
           </div>
           <h2 className="text-base font-bold text-slate-800 mt-1">
-            Auditoría y Validación Ágil (Human-in-the-Loop)
+            Auditoría y Validación Ágil 
           </h2>
         </div>
         <button

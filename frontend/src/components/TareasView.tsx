@@ -186,7 +186,7 @@ export const TareasView: React.FC<TareasViewProps> = ({
             </span>
           </div>
           <h2 className="text-base font-bold text-slate-800 mt-1">
-            Revisión y Estimación de Tareas (Human-in-the-Loop)
+            Revisión y Estimación de Tareas 
           </h2>
         </div>
 

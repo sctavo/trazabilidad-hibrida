@@ -50,7 +50,7 @@ export const ProyectosModal: React.FC<ProyectosModalProps> = ({
 
   const handleEliminar = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm("¿Seguro que deseas eliminar este proyecto y toda su trazabilidad?")) return;
+    if (!confirm("¿Seguro que deseas eliminar este proyecto?")) return;
 
     try {
       const resp = await fetch(`http://localhost:8000/api/v1/proyectos/${id}`, {
@@ -75,7 +75,7 @@ export const ProyectosModal: React.FC<ProyectosModalProps> = ({
             <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
               Módulo de Proyectos (HU-23)
             </span>
-            <h3 className="text-lg font-bold text-slate-800 mt-1">Mis Proyectos de Trazabilidad</h3>
+            <h3 className="text-lg font-bold text-slate-800 mt-1">Mis Proyectos </h3>
           </div>
           <button
             onClick={onCerrar}

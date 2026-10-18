@@ -85,7 +85,7 @@ export const RequisitosView: React.FC<RequisitosViewProps> = ({
           <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-xl">
             <div className="flex items-center gap-2 text-amber-600">
               <span className="text-xl">⚠️</span>
-              <h3 className="font-bold text-sm text-slate-800">Impacto en Trazabilidad Jerárquica</h3>
+              <h3 className="font-bold text-sm text-slate-800">Impacto en Trazabilidad</h3>
             </div>
             <p className="text-xs text-slate-600 leading-relaxed">
               Has modificado los requisitos:{" "}
@@ -131,7 +131,7 @@ export const RequisitosView: React.FC<RequisitosViewProps> = ({
             )}
           </div>
           <h2 className="text-base font-bold text-slate-800 mt-1">
-            Revisión y Aprobación Formal (Human-in-the-Loop)
+            Revisión y Aprobación Formal 
           </h2>
         </div>
 
@@ -236,7 +236,7 @@ export const RequisitosView: React.FC<RequisitosViewProps> = ({
       {/* Formulario Manual */}
       <div className="bg-blue-50/40 p-5 rounded-xl border border-dashed border-blue-300 space-y-3">
         <label className="text-xs font-bold text-blue-900 uppercase tracking-wider block">
-          + Agregar Requisito de Usuario Manual (Human-in-the-Loop)
+          + Agregar Requisito de Usuario Manual 
         </label>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           <input

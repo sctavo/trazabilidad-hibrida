@@ -59,7 +59,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginExitoso }) => {
       <div className="bg-white border border-slate-200 shadow-sm rounded-2xl p-8 max-w-md w-full space-y-6">
         <div>
           <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">
-            Trazabilidad Híbrida IA
+            ReqGen
           </span>
           <h2 className="text-xl font-bold text-slate-900 mt-2">
             {esRegistro ? "Crear cuenta de analista" : "Iniciar sesión en la plataforma"}

@@ -71,7 +71,7 @@ export const IngestaView: React.FC<IngestaViewProps> = ({ onSolicitarGeneracion 
               : "border-transparent text-slate-500 hover:text-slate-700"
           }`}
         >
-          📁 Cargar Archivo (PDF / TXT)
+           Cargar Archivo (PDF / TXT)
         </button>
         <button
           onClick={() => setTab("manual")}
@@ -81,7 +81,7 @@ export const IngestaView: React.FC<IngestaViewProps> = ({ onSolicitarGeneracion 
               : "border-transparent text-slate-500 hover:text-slate-700"
           }`}
         >
-          ✏️ Pegar / Escribir Texto
+           Pegar / Escribir Texto
         </button>
       </div>
 
@@ -169,7 +169,7 @@ export const IngestaView: React.FC<IngestaViewProps> = ({ onSolicitarGeneracion 
 
           <div>
             <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">
-              Edición previa del texto fuente (Human-in-the-loop)
+              Edición previa del texto fuente 
             </label>
             <textarea
               rows={8}

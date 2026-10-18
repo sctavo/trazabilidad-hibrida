@@ -421,7 +421,7 @@ export default function App() {
 
         <div>
           <h1 className="text-2xl font-bold text-slate-900">
-            Sistema para la especificación y trazabilidad de requisitos
+            ReqGen 
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
             Transformación secuencial estricta: Documento → Requisitos (RU) → Historias de Usuario → Tareas.
