@@ -10,6 +10,14 @@ from api.routes import ingesta, generacion, auth, proyectos
 # Crea las tablas en PostgreSQL si no existen al iniciar la app
 Base.metadata.create_all(bind=engine)
 
+# Asegura que la columna modelo_ia exista si la tabla ya había sido creada previamente
+try:
+    with engine.connect() as conn:
+        conn.execute(text("ALTER TABLE proyecto ADD COLUMN IF NOT EXISTS modelo_ia VARCHAR(100) DEFAULT 'google/gemini-2.5-flash-lite'"))
+        conn.commit()
+except Exception as e:
+    print(f"Aviso migración modelo_ia: {e}")
+
 app = FastAPI(title="Trazabilidad IA - Backend")
 
 app.add_middleware(

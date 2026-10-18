@@ -32,6 +32,7 @@ def listar_proyectos_usuario(
             "nombre": p.nombre,
             "descripcion": p.descripcion,
             "etapa_actual": p.etapa_actual,
+            "modelo_ia": p.modelo_ia or "google/gemini-2.5-flash-lite",
             "creado_en": p.creado_en,
             "total_requisitos": len(p.requisitos) if p.requisitos else 0,
             "total_historias": len(p.historias_usuario) if p.historias_usuario else 0,
@@ -59,12 +60,15 @@ def guardar_o_actualizar_proyecto(
         proyecto.nombre = solicitud.nombre
         proyecto.descripcion = solicitud.descripcion
         proyecto.etapa_actual = solicitud.etapa_actual
+        if solicitud.modelo_ia:
+            proyecto.modelo_ia = solicitud.modelo_ia
     else:
         proyecto = models.Proyecto(
             usuario_id=usuario_actual.id,
             nombre=solicitud.nombre,
             descripcion=solicitud.descripcion,
-            etapa_actual=solicitud.etapa_actual
+            etapa_actual=solicitud.etapa_actual,
+            modelo_ia=solicitud.modelo_ia or "google/gemini-2.5-flash-lite"
         )
         db.add(proyecto)
         db.flush()
@@ -149,6 +153,7 @@ def guardar_o_actualizar_proyecto(
         "nombre": proyecto.nombre,
         "descripcion": proyecto.descripcion,
         "etapa_actual": proyecto.etapa_actual,
+        "modelo_ia": proyecto.modelo_ia or "google/gemini-2.5-flash-lite",
         "texto_documento": doc_actual.texto_extraido if doc_actual else "",
         "nombre_archivo": doc_actual.nombre_archivo if doc_actual else "",
         "requisitos": solicitud.requisitos,
@@ -221,6 +226,7 @@ def cargar_proyecto_completo(
         "nombre": proyecto.nombre,
         "descripcion": proyecto.descripcion,
         "etapa_actual": proyecto.etapa_actual,
+        "modelo_ia": proyecto.modelo_ia or "google/gemini-2.5-flash-lite",
         "texto_documento": doc.texto_extraido if doc else "",
         "nombre_archivo": doc.nombre_archivo if doc else "",
         "requisitos": requisitos_dto,

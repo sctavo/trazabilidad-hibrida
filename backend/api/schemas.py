@@ -18,6 +18,7 @@ class RequisitosResponse(BaseModel):
 
 class TextoEntradaRequest(BaseModel):
     texto: str
+    modelo: Optional[str] = "google/gemini-2.5-flash-lite"
 
 # --- 2. Historias de Usuario (HU) ---
 class HistoriaUsuarioItem(BaseModel):
@@ -34,6 +35,7 @@ class HistoriasUsuarioResponse(BaseModel):
 
 class GenerarHistoriasRequest(BaseModel):
     requisitos: List[RequisitoItem]
+    modelo: Optional[str] = "google/gemini-2.5-flash-lite"
 
 # --- 3. Regeneración de Criterios con IA ---
 class RegenerarCriteriosRequest(BaseModel):
@@ -42,6 +44,7 @@ class RegenerarCriteriosRequest(BaseModel):
     rol: str
     quiero: str
     para: str
+    modelo: Optional[str] = "google/gemini-2.5-flash-lite"
 
 class CriteriosResponse(BaseModel):
     criterios_aceptacion: List[str]
@@ -60,6 +63,7 @@ class TareasResponse(BaseModel):
 
 class GenerarTareasRequest(BaseModel):
     historias_usuario: List[HistoriaUsuarioItem]
+    modelo: Optional[str] = "google/gemini-2.5-flash-lite"
 
 # ------------------------------Esquemas de Autenticación ------------------------
 class UsuarioRegistroRequest(BaseModel):
@@ -90,6 +94,7 @@ class GuardarProyectoRequest(BaseModel):
     nombre: str
     descripcion: Optional[str] = None
     etapa_actual: int
+    modelo_ia: Optional[str] = "google/gemini-2.5-flash-lite"
     texto_documento: Optional[str] = None
     nombre_archivo: Optional[str] = "Entrada directa"
     requisitos: List[RequisitoItem] = []
@@ -101,6 +106,7 @@ class ProyectoResumenResponse(BaseModel):
     nombre: str
     descripcion: Optional[str] = None
     etapa_actual: int
+    modelo_ia: Optional[str] = "google/gemini-2.5-flash-lite"
     creado_en: datetime
     total_requisitos: Optional[int] = 0
     total_historias: Optional[int] = 0
@@ -114,6 +120,7 @@ class ProyectoDetalleResponse(BaseModel):
     nombre: str
     descripcion: Optional[str]
     etapa_actual: int
+    modelo_ia: Optional[str] = "google/gemini-2.5-flash-lite"
     texto_documento: Optional[str]
     nombre_archivo: Optional[str]
     requisitos: List[RequisitoItem]

@@ -6,6 +6,7 @@ interface HistoriasUsuarioViewProps {
   requisitosDisponibles: RequisitoItem[];
   ruModificadosIds: Set<string>;
   ruSincronizadosIds: Set<string>;
+  modeloIa?: string;
   onVolver: () => void;
   onConfirmar: (historiasAprobadas: HistoriaUsuarioItem[]) => void;
   onRegistrarHuModificada: (huId: string) => void;
@@ -19,6 +20,7 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
   requisitosDisponibles,
   ruModificadosIds,
   ruSincronizadosIds,
+  modeloIa = "google/gemini-2.5-flash-lite",
   onVolver,
   onConfirmar,
   onRegistrarHuModificada,
@@ -108,7 +110,7 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
 
     setRegenerandoRuId(ruId);
     try {
-      const resp = await fetch("http://localhost:8000/api/v1/generar/historias-usuario/regenerar-ru/", {
+      const resp = await fetch(`http://localhost:8000/api/v1/generar/historias-usuario/regenerar-ru/?modelo=${encodeURIComponent(modeloIa)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(ruObj),
@@ -174,6 +176,7 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
           rol: hu.rol,
           quiero: hu.quiero,
           para: hu.para,
+          modelo: modeloIa,
         }),
       });
       if (!response.ok) throw new Error("Error al obtener nuevos criterios");

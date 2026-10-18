@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { LoginView } from "./components/LoginView";
 import { DashboardView } from "./components/DashboardView";
+import { SeleccionModeloView } from "./components/SeleccionModeloView";
 import { IngestaView } from "./components/IngestaView";
 import { RequisitosView } from "./components/RequisitosView";
 import { HistoriasUsuarioView } from "./components/HistoriasUsuarioView";
 import { TareasView } from "./components/TareasView";
 import type { RequisitoItem, HistoriaUsuarioItem, TareaItem } from "./types";
+import { MODELOS_IA_CATALOGO } from "./types";
 
 export default function App() {
   const [token, setToken] = useState<string | null>(localStorage.getItem("token"));
@@ -18,8 +20,9 @@ export default function App() {
 
   const [proyectoId, setProyectoId] = useState<string | null>(null);
   const [nombreProyecto, setNombreProyecto] = useState("Especificación de Requisitos");
+  const [modeloIa, setModeloIa] = useState<string>("google/gemini-2.5-flash-lite");
   const [textoDocumento, setTextoDocumento] = useState("");
-  const [etapaActual, setEtapaActual] = useState<1 | 2 | 3 | 4>(1);
+  const [etapaActual, setEtapaActual] = useState<0 | 1 | 2 | 3 | 4>(0);
 
   const [requisitos, setRequisitos] = useState<RequisitoItem[]>([]);
   const [historias, setHistorias] = useState<HistoriaUsuarioItem[]>([]);
@@ -55,6 +58,7 @@ export default function App() {
           nombre: nombreProyecto,
           etapa_actual: etapaActual,
           texto_documento: textoDocumento,
+          modelo_ia: modeloIa,
           requisitos,
           historias_usuario: historias,
           tareas,
@@ -94,6 +98,7 @@ export default function App() {
 
     setProyectoId(null);
     setNombreProyecto("Especificación de Requisitos");
+    setModeloIa("google/gemini-2.5-flash-lite");
     setTextoDocumento("");
     setRequisitos([]);
     setHistorias([]);
@@ -102,13 +107,14 @@ export default function App() {
     setRuSincronizadosIds(new Set());
     setHuModificadasIds(new Set());
     setHuSincronizadasIds(new Set());
-    setEtapaActual(1);
+    setEtapaActual(0);
     setVistaActual("dashboard");
   };
 
   const handleCrearNuevoProyecto = () => {
     setProyectoId(null);
     setNombreProyecto(`Proyecto ${new Date().toLocaleDateString()}`);
+    setModeloIa("google/gemini-2.5-flash-lite");
     setTextoDocumento("");
     setRequisitos([]);
     setHistorias([]);
@@ -117,7 +123,7 @@ export default function App() {
     setRuSincronizadosIds(new Set());
     setHuModificadasIds(new Set());
     setHuSincronizadasIds(new Set());
-    setEtapaActual(1);
+    setEtapaActual(0);
   };
 
   const handleCargarProyecto = async (id: string) => {
@@ -131,6 +137,7 @@ export default function App() {
 
       setProyectoId(data.id);
       setNombreProyecto(data.nombre);
+      setModeloIa(data.modelo_ia || "google/gemini-2.5-flash-lite");
       setTextoDocumento(data.texto_documento || "");
       setRequisitos(data.requisitos || []);
       setHistorias(data.historias_usuario || []);
@@ -139,7 +146,7 @@ export default function App() {
       setRuSincronizadosIds(new Set());
       setHuModificadasIds(new Set());
       setHuSincronizadasIds(new Set());
-      setEtapaActual(data.etapa_actual as 1 | 2 | 3 | 4);
+      setEtapaActual((data.etapa_actual as 0 | 1 | 2 | 3 | 4) ?? 1);
     } catch (err: any) {
       alert(err.message);
     }
@@ -170,7 +177,7 @@ export default function App() {
       const response = await fetch("http://localhost:8000/api/v1/generar/requisitos/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ texto }),
+        body: JSON.stringify({ texto, modelo: modeloIa }),
       });
 
       if (!response.ok) throw new Error("Error al generar requisitos");
@@ -272,7 +279,7 @@ export default function App() {
         const response = await fetch("http://localhost:8000/api/v1/generar/historias-usuario/", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ requisitos: aprobados }),
+          body: JSON.stringify({ requisitos: aprobados, modelo: modeloIa }),
         });
 
         if (!response.ok) throw new Error("Error al derivar Historias de Usuario");
@@ -329,7 +336,7 @@ export default function App() {
         const response = await fetch("http://localhost:8000/api/v1/generar/tareas/", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ historias_usuario: aprobadas }),
+          body: JSON.stringify({ historias_usuario: aprobadas, modelo: modeloIa }),
         });
 
         if (!response.ok) throw new Error("Error al derivar Tareas Técnicas");
@@ -355,7 +362,7 @@ export default function App() {
         const response = await fetch("http://localhost:8000/api/v1/generar/tareas/", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ historias_usuario: husSinTareas }),
+          body: JSON.stringify({ historias_usuario: husSinTareas, modelo: modeloIa }),
         });
 
         if (!response.ok) throw new Error("Error al derivar tareas para las historias nuevas.");
@@ -425,12 +432,39 @@ export default function App() {
               {usuario?.nombre.slice(0, 2).toUpperCase() || "AN"}
             </div>
             <div>
-              <input
-                type="text"
-                value={nombreProyecto}
-                onChange={(e) => setNombreProyecto(e.target.value)}
-                className="font-bold text-xs text-slate-800 border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none"
-              />
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={nombreProyecto}
+                  onChange={(e) => setNombreProyecto(e.target.value)}
+                  className="font-bold text-xs text-slate-800 border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none"
+                />
+                {(() => {
+                  const m = MODELOS_IA_CATALOGO.find((x) => x.id === modeloIa) || MODELOS_IA_CATALOGO[0];
+                  return (
+                    <span
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border ${
+                        m.esRecomendado
+                          ? "bg-blue-50 border-blue-200 text-blue-700"
+                          : "bg-purple-50 border-purple-200 text-purple-700"
+                      }`}
+                      title={m.descripcion}
+                    >
+                      <span>{m.icono}</span>
+                      <span>{m.nombre}</span>
+                      {m.esRecomendado ? (
+                        <span className="text-[8px] bg-blue-100 text-blue-800 px-1 rounded-sm uppercase tracking-wider font-bold">
+                          Default
+                        </span>
+                      ) : (
+                        <span className="text-[8px] bg-purple-100 text-purple-800 px-1 rounded-sm uppercase tracking-wider font-bold">
+                          Exp
+                        </span>
+                      )}
+                    </span>
+                  );
+                })()}
+              </div>
               <span className="text-[11px] text-slate-400 block">Analista: {usuario?.email}</span>
             </div>
           </div>
@@ -475,27 +509,51 @@ export default function App() {
         {cargandoRequisitos && (
           <div className="bg-white border border-slate-200 rounded-xl p-12 text-center shadow-xs">
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <h3 className="text-sm font-semibold text-slate-800">Extrayendo Requisitos de Usuario con Gemini...</h3>
+            <h3 className="text-sm font-semibold text-slate-800">
+              Extrayendo Requisitos de Usuario con {MODELOS_IA_CATALOGO.find(m => m.id === modeloIa)?.nombre || "IA"}...
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">Con mitigación automática activa</p>
           </div>
         )}
 
         {cargandoHu && (
           <div className="bg-white border border-slate-200 rounded-xl p-12 text-center shadow-xs">
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-600 mx-auto mb-4"></div>
-            <h3 className="text-sm font-semibold text-slate-800">Derivando Historias de Usuario con Gemini...</h3>
+            <h3 className="text-sm font-semibold text-slate-800">
+              Derivando Historias de Usuario con {MODELOS_IA_CATALOGO.find(m => m.id === modeloIa)?.nombre || "IA"}...
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">Con mitigación automática activa</p>
           </div>
         )}
 
         {cargandoTareas && (
           <div className="bg-white border border-slate-200 rounded-xl p-12 text-center shadow-xs">
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-            <h3 className="text-sm font-semibold text-slate-800">Derivando Tareas Técnicas con Gemini...</h3>
+            <h3 className="text-sm font-semibold text-slate-800">
+              Derivando Tareas Técnicas con {MODELOS_IA_CATALOGO.find(m => m.id === modeloIa)?.nombre || "IA"}...
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">Con mitigación automática activa</p>
           </div>
         )}
 
         {!cargandoRequisitos && !cargandoHu && !cargandoTareas && (
           <>
-            {etapaActual === 1 && <IngestaView onSolicitarGeneracion={handleSolicitarRequisitos} />}
+            {etapaActual === 0 && (
+              <SeleccionModeloView
+                modeloSeleccionado={modeloIa}
+                onCambiarModelo={setModeloIa}
+                modeloBloqueado={requisitos.length > 0 || proyectoId !== null}
+                onContinuar={() => setEtapaActual(1)}
+              />
+            )}
+            {etapaActual === 1 && (
+              <IngestaView
+                modeloSeleccionado={modeloIa}
+                modeloBloqueado={requisitos.length > 0 || proyectoId !== null}
+                onVolverPaso0={() => setEtapaActual(0)}
+                onSolicitarGeneracion={handleSolicitarRequisitos}
+              />
+            )}
             {etapaActual === 2 && (
               <RequisitosView
                 requisitosIniciales={requisitos}
@@ -510,6 +568,7 @@ export default function App() {
                 requisitosDisponibles={requisitos}
                 ruModificadosIds={ruModificadosIds}
                 ruSincronizadosIds={ruSincronizadosIds}
+                modeloIa={modeloIa}
                 onVolver={() => setEtapaActual(2)}
                 onConfirmar={handleHistoriasAprobadas}
                 onRegistrarHuModificada={handleRegistrarHuModificada}
@@ -524,6 +583,7 @@ export default function App() {
                 historiasDisponibles={historias}
                 huModificadasIds={huModificadasIds}
                 huSincronizadasIds={huSincronizadasIds}
+                modeloIa={modeloIa}
                 onVolver={() => setEtapaActual(3)}
                 onConfirmar={(aprobadas) => {
                   setTareas(aprobadas);
@@ -537,10 +597,24 @@ export default function App() {
         )}
 
         {/* Pipeline de Navegación */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-slate-200 text-xs">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 pt-4 border-t border-slate-200 text-xs">
+          <button
+            onClick={() => setEtapaActual(0)}
+            className={`p-2.5 bg-white text-left rounded-lg border shadow-xs transition ${
+              etapaActual === 0 ? "border-blue-500 ring-1 ring-blue-500" : "border-slate-200 hover:border-slate-300"
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-blue-600 block">Paso 0</span>
+              {(requisitos.length > 0 || proyectoId !== null) && (
+                <span className="text-[10px] text-slate-400" title="Modelo fijado para este proyecto">🔒</span>
+              )}
+            </div>
+            <span className="font-medium text-slate-800">Motor IA</span>
+          </button>
           <button
             onClick={() => setEtapaActual(1)}
-            className={`p-3 bg-white text-left rounded-lg border shadow-xs transition ${
+            className={`p-2.5 bg-white text-left rounded-lg border shadow-xs transition ${
               etapaActual === 1 ? "border-blue-500 ring-1 ring-blue-500" : "border-slate-200 hover:border-slate-300"
             }`}
           >
@@ -550,7 +624,7 @@ export default function App() {
           <button
             onClick={() => requisitos.length > 0 && setEtapaActual(2)}
             disabled={requisitos.length === 0}
-            className={`p-3 bg-white text-left rounded-lg border shadow-xs transition disabled:opacity-40 ${
+            className={`p-2.5 bg-white text-left rounded-lg border shadow-xs transition disabled:opacity-40 ${
               etapaActual === 2 ? "border-blue-500 ring-1 ring-blue-500" : "border-slate-200 hover:border-slate-300"
             }`}
           >
@@ -560,7 +634,7 @@ export default function App() {
           <button
             onClick={() => historias.length > 0 && setEtapaActual(3)}
             disabled={historias.length === 0}
-            className={`p-3 bg-white text-left rounded-lg border shadow-xs transition disabled:opacity-40 ${
+            className={`p-2.5 bg-white text-left rounded-lg border shadow-xs transition disabled:opacity-40 ${
               etapaActual === 3 ? "border-purple-500 ring-1 ring-purple-500" : "border-slate-200 hover:border-slate-300"
             }`}
           >
@@ -570,7 +644,7 @@ export default function App() {
           <button
             onClick={() => tareas.length > 0 && setEtapaActual(4)}
             disabled={tareas.length === 0}
-            className={`p-3 bg-white text-left rounded-lg border shadow-xs transition disabled:opacity-40 ${
+            className={`p-2.5 bg-white text-left rounded-lg border shadow-xs transition disabled:opacity-40 ${
               etapaActual === 4 ? "border-indigo-500 ring-1 ring-indigo-500" : "border-slate-200 hover:border-slate-300"
             }`}
           >

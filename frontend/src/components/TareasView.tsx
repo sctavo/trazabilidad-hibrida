@@ -6,6 +6,7 @@ interface TareasViewProps {
   historiasDisponibles: HistoriaUsuarioItem[];
   huModificadasIds: Set<string>;
   huSincronizadasIds: Set<string>;
+  modeloIa?: string;
   onVolver: () => void;
   onConfirmar: (tareasAprobadas: TareaItem[]) => void;
   onTareasActualizadas: (tareas: TareaItem[]) => void;
@@ -17,6 +18,7 @@ export const TareasView: React.FC<TareasViewProps> = ({
   historiasDisponibles,
   huModificadasIds,
   huSincronizadasIds,
+  modeloIa = "google/gemini-2.5-flash-lite",
   onVolver,
   onConfirmar,
   onTareasActualizadas,
@@ -56,7 +58,7 @@ export const TareasView: React.FC<TareasViewProps> = ({
 
     setRegenerandoHuId(huId);
     try {
-      const resp = await fetch("http://localhost:8000/api/v1/generar/tareas/regenerar-hu/", {
+      const resp = await fetch(`http://localhost:8000/api/v1/generar/tareas/regenerar-hu/?modelo=${encodeURIComponent(modeloIa)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(huObj),

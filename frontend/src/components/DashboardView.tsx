@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import type { ProyectoResumen } from "../types";
+import { MODELOS_IA_CATALOGO, type ProyectoResumen } from "../types";
 
 interface DashboardViewProps {
   token: string;
@@ -81,6 +81,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const totalHistorias = proyectos.reduce((acc, p) => acc + (p.total_historias || 0), 0);
   const totalTareas = proyectos.reduce((acc, p) => acc + (p.total_tareas || 0), 0);
 
+  // Cálculo del modelo de IA preferido del analista
+  const conteoModelos: Record<string, number> = {};
+  proyectos.forEach((p) => {
+    const mod = p.modelo_ia || "google/gemini-2.5-flash-lite";
+    conteoModelos[mod] = (conteoModelos[mod] || 0) + 1;
+  });
+
+  let modeloPreferidoId = "google/gemini-2.5-flash-lite";
+  let maxUsos = 0;
+  Object.entries(conteoModelos).forEach(([modId, cantidad]) => {
+    if (cantidad > maxUsos) {
+      maxUsos = cantidad;
+      modeloPreferidoId = modId;
+    }
+  });
+
+  const modeloPreferidoInfo =
+    MODELOS_IA_CATALOGO.find((m) => m.id === modeloPreferidoId) || MODELOS_IA_CATALOGO[0];
+  const porcentajeUsoModelo = totalProyectos > 0 ? Math.round((maxUsos / totalProyectos) * 100) : 100;
+
   // Proyectos filtrados por búsqueda
   const proyectosFiltrados = proyectos.filter((p) =>
     p.nombre.toLowerCase().includes(busqueda.toLowerCase())
@@ -88,6 +108,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const getEtapaInfo = (etapa: number) => {
     switch (etapa) {
+      case 0:
+        return {
+          texto: "Paso 0: Motor IA",
+          bg: "bg-slate-50 text-slate-700 border-slate-200",
+          barColor: "bg-slate-400",
+          porcentaje: 10,
+        };
       case 1:
         return {
           texto: "Etapa 1: Ingesta",
@@ -301,7 +328,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 {/* Tarjeta de Acción: NUEVO PROYECTO + */}
                 <div
                   onClick={onCrearNuevoProyecto}
-                  className="group border-2 border-dashed border-blue-300 hover:border-blue-600 bg-blue-50/30 hover:bg-blue-50/70 rounded-2xl p-5 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-200 min-h-[190px] shadow-xs"
+                  className="group border-2 border-dashed border-blue-300 hover:border-blue-600 bg-blue-50/30 hover:bg-blue-50/70 rounded-2xl p-5 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-200 min-h-[200px] shadow-xs"
                 >
                   <div className="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 group-hover:bg-blue-600 group-hover:text-white flex items-center justify-center text-2xl font-black transition-colors mb-2 shadow-xs">
                     +
@@ -317,6 +344,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 {/* Tarjetas de Proyectos Existentes */}
                 {proyectosFiltrados.map((proyecto) => {
                   const etapaInfo = getEtapaInfo(proyecto.etapa_actual);
+                  const modeloInfo =
+                    MODELOS_IA_CATALOGO.find((m) => m.id === proyecto.modelo_ia) ||
+                    MODELOS_IA_CATALOGO[0];
                   const fechaFormateada = new Date(proyecto.creado_en).toLocaleDateString("es-ES", {
                     day: "2-digit",
                     month: "short",
@@ -327,11 +357,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <div
                       key={proyecto.id}
                       onClick={() => onAbrirProyecto(proyecto.id)}
-                      className="bg-white border border-slate-200 hover:border-blue-400 rounded-2xl p-5 flex flex-col justify-between cursor-pointer transition-all duration-200 hover:shadow-md group relative min-h-[190px]"
+                      className="bg-white border border-slate-200 hover:border-blue-400 rounded-2xl p-5 flex flex-col justify-between cursor-pointer transition-all duration-200 hover:shadow-md group relative min-h-[200px]"
                     >
                       {/* Cabecera de la tarjeta */}
                       <div>
-                        <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="flex items-start justify-between gap-2 mb-1.5">
                           <span
                             className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${etapaInfo.bg}`}
                           >
@@ -348,6 +378,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           >
                             🗑️
                           </button>
+                        </div>
+
+                        {/* Chip de IA utilizada para la asistencia (Requerimiento explícito) */}
+                        <div className="mb-2">
+                          <span
+                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${modeloInfo.colorBg} inline-flex items-center gap-1`}
+                            title={`Asistencia técnica provista por ${modeloInfo.nombre} (${modeloInfo.proveedor})`}
+                          >
+                            <span>{modeloInfo.icono}</span>
+                            <span>{modeloInfo.nombre}</span>
+                          </span>
                         </div>
 
                         <h3 className="font-bold text-sm text-slate-800 group-hover:text-blue-600 transition-colors line-clamp-2">
@@ -439,6 +480,40 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
               </div>
 
+              {/* Tarjeta de Modelo de IA Preferido (Requerimiento explícito) */}
+              <div className="bg-slate-50/80 border border-slate-200 rounded-xl p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
+                    Modelo Preferido del Usuario
+                  </span>
+                  {modeloPreferidoInfo.esRecomendado ? (
+                    <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded-full bg-blue-100 text-blue-700 border border-blue-200">
+                      Recomendado
+                    </span>
+                  ) : (
+                    <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                      Experimental
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-3 pt-1">
+                  <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 shadow-2xs flex items-center justify-center text-xl shrink-0">
+                    {modeloPreferidoInfo.icono}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="font-bold text-xs text-slate-900 block truncate">
+                      {modeloPreferidoInfo.nombre}
+                    </span>
+                    <span className="text-[11px] text-slate-500 block">
+                      {totalProyectos > 0
+                        ? `${maxUsos} de ${totalProyectos} proyectos (${porcentajeUsoModelo}%)`
+                        : "Predeterminado (Recomendado)"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
               {/* Desglose de Proyectos por Etapa */}
               <div className="space-y-3">
                 <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
@@ -517,4 +592,3 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     </div>
   );
 };
-
