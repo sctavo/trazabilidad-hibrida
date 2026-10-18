@@ -1,10 +1,19 @@
 import React, { useState, useRef } from "react";
+import { MODELOS_IA_CATALOGO } from "../types";
 
 interface IngestaViewProps {
+  modeloSeleccionado: string;
+  modeloBloqueado?: boolean;
+  onVolverPaso0?: () => void;
   onSolicitarGeneracion: (texto: string) => void;
 }
 
-export const IngestaView: React.FC<IngestaViewProps> = ({ onSolicitarGeneracion }) => {
+export const IngestaView: React.FC<IngestaViewProps> = ({
+  modeloSeleccionado,
+  modeloBloqueado = false,
+  onVolverPaso0,
+  onSolicitarGeneracion,
+}) => {
   const [tab, setTab] = useState<"archivo" | "manual">("archivo");
   const [loadingArchivo, setLoadingArchivo] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -15,6 +24,9 @@ export const IngestaView: React.FC<IngestaViewProps> = ({ onSolicitarGeneracion 
   const [textoManual, setTextoManual] = useState<string>("");
 
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const modeloActual =
+    MODELOS_IA_CATALOGO.find((m) => m.id === modeloSeleccionado) || MODELOS_IA_CATALOGO[0];
 
   const handleUpload = async (file: File) => {
     const validExtensions = ["text/plain", "application/pdf"];
@@ -62,6 +74,59 @@ export const IngestaView: React.FC<IngestaViewProps> = ({ onSolicitarGeneracion 
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6">
+      
+      {/* 1. Resumen compacto del Motor de IA configurado en Paso 0 */}
+      <div className="bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-lg shrink-0">
+            {modeloActual.icono}
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Asistente de IA:
+              </span>
+              <span className="font-bold text-xs text-slate-800">
+                {modeloActual.nombre}
+              </span>
+              <span
+                className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                  modeloActual.esRecomendado
+                    ? "bg-blue-100 text-blue-700"
+                    : "bg-purple-100 text-purple-700"
+                }`}
+              >
+                {modeloActual.badge}
+              </span>
+            </div>
+            <span className="text-[11px] text-slate-500 block truncate max-w-md">
+              {modeloActual.descripcion}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          {modeloBloqueado ? (
+            <span className="text-[11px] text-slate-500 font-medium bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200 flex items-center gap-1">
+              <span>🔒</span> Motor fijado
+            </span>
+          ) : (
+            onVolverPaso0 && (
+              <button
+                type="button"
+                onClick={onVolverPaso0}
+                className="text-xs text-blue-600 hover:text-blue-700 font-semibold px-3 py-1.5 bg-blue-50 hover:bg-blue-100 rounded-lg transition border border-blue-200 flex items-center gap-1.5"
+                title="Cambiar el modelo de inteligencia artificial en el Paso 0"
+              >
+                <span>←</span>
+                <span>Cambiar motor (Paso 0)</span>
+              </button>
+            )
+          )}
+        </div>
+      </div>
+
+      {/* 2. Pestañas de Ingesta de Documento o Texto */}
       <div className="flex border-b border-slate-200 bg-white rounded-t-xl px-4 pt-2">
         <button
           onClick={() => setTab("archivo")}
@@ -71,7 +136,7 @@ export const IngestaView: React.FC<IngestaViewProps> = ({ onSolicitarGeneracion 
               : "border-transparent text-slate-500 hover:text-slate-700"
           }`}
         >
-          📁 Cargar Archivo (PDF / TXT)
+          Cargar Archivo (PDF / TXT)
         </button>
         <button
           onClick={() => setTab("manual")}
@@ -81,7 +146,7 @@ export const IngestaView: React.FC<IngestaViewProps> = ({ onSolicitarGeneracion 
               : "border-transparent text-slate-500 hover:text-slate-700"
           }`}
         >
-          ✏️ Pegar / Escribir Texto
+          Pegar / Escribir Texto
         </button>
       </div>
 
@@ -169,7 +234,7 @@ export const IngestaView: React.FC<IngestaViewProps> = ({ onSolicitarGeneracion 
 
           <div>
             <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">
-              Edición previa del texto fuente (Human-in-the-loop)
+              Edición previa del texto fuente 
             </label>
             <textarea
               rows={8}
@@ -184,7 +249,7 @@ export const IngestaView: React.FC<IngestaViewProps> = ({ onSolicitarGeneracion 
               onClick={() => onSolicitarGeneracion(textoBase)}
               className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm transition flex items-center gap-2"
             >
-              <span>Generar Requisitos de Usuario (RU) con IA</span>
+              <span>Generar Requisitos de Usuario (RU) con {modeloActual.nombre}</span>
               <span>→</span>
             </button>
           </div>
