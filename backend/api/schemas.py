@@ -99,9 +99,12 @@ class GuardarProyectoRequest(BaseModel):
 class ProyectoResumenResponse(BaseModel):
     id: str
     nombre: str
-    descripcion: Optional[str]
+    descripcion: Optional[str] = None
     etapa_actual: int
     creado_en: datetime
+    total_requisitos: Optional[int] = 0
+    total_historias: Optional[int] = 0
+    total_tareas: Optional[int] = 0
 
     class Config:
         from_attributes = True

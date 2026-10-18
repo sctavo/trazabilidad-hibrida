@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { LoginView } from "./components/LoginView";
+import { DashboardView } from "./components/DashboardView";
 import { IngestaView } from "./components/IngestaView";
 import { RequisitosView } from "./components/RequisitosView";
 import { HistoriasUsuarioView } from "./components/HistoriasUsuarioView";
 import { TareasView } from "./components/TareasView";
-import { ProyectosModal } from "./components/ProyectosModal";
 import type { RequisitoItem, HistoriaUsuarioItem, TareaItem } from "./types";
 
 export default function App() {
@@ -12,6 +12,9 @@ export default function App() {
   const [usuario, setUsuario] = useState<{ id: string; nombre: string; email: string } | null>(
     localStorage.getItem("usuario") ? JSON.parse(localStorage.getItem("usuario")!) : null
   );
+
+  // Control de vista: "dashboard" (pantalla de bienvenida y proyectos) vs "workspace" (pipeline de 4 etapas)
+  const [vistaActual, setVistaActual] = useState<"dashboard" | "workspace">("dashboard");
 
   const [proyectoId, setProyectoId] = useState<string | null>(null);
   const [nombreProyecto, setNombreProyecto] = useState("Especificación de Requisitos");
@@ -33,9 +36,57 @@ export default function App() {
   const [cargandoHu, setCargandoHu] = useState(false);
   const [cargandoTareas, setCargandoTareas] = useState(false);
   const [guardandoBD, setGuardandoBD] = useState(false);
-  const [mostrarModalProyectos, setMostrarModalProyectos] = useState(false);
 
-  const handleCerrarSesion = () => {
+  const handleGuardarProyectoBD = async (silencioso = false): Promise<boolean> => {
+    if (!token) return false;
+    setGuardandoBD(true);
+    try {
+      const url = proyectoId
+        ? `http://localhost:8000/api/v1/proyectos/?proyecto_id=${proyectoId}`
+        : "http://localhost:8000/api/v1/proyectos/";
+
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          nombre: nombreProyecto,
+          etapa_actual: etapaActual,
+          texto_documento: textoDocumento,
+          requisitos,
+          historias_usuario: historias,
+          tareas,
+        }),
+      });
+
+      if (!resp.ok) throw new Error("Error al persistir en base de datos.");
+      const data = await resp.json();
+      setProyectoId(data.id);
+      if (!silencioso) {
+        alert("✓ Proyecto guardado en PostgreSQL exitosamente.");
+      }
+      return true;
+    } catch (err: any) {
+      if (!silencioso) {
+        alert(err.message);
+      }
+      return false;
+    } finally {
+      setGuardandoBD(false);
+    }
+  };
+
+  const handleCerrarSesion = async () => {
+    // Si el usuario está trabajando en un proyecto y hay datos cargados, se auto-guarda antes de cerrar sesión
+    if (
+      vistaActual === "workspace" &&
+      (textoDocumento.trim() || requisitos.length > 0 || historias.length > 0 || tareas.length > 0)
+    ) {
+      await handleGuardarProyectoBD(true);
+    }
+
     setToken(null);
     setUsuario(null);
     localStorage.removeItem("token");
@@ -52,6 +103,7 @@ export default function App() {
     setHuModificadasIds(new Set());
     setHuSincronizadasIds(new Set());
     setEtapaActual(1);
+    setVistaActual("dashboard");
   };
 
   const handleCrearNuevoProyecto = () => {
@@ -93,39 +145,22 @@ export default function App() {
     }
   };
 
-  const handleGuardarProyectoBD = async () => {
-    if (!token) return;
-    setGuardandoBD(true);
-    try {
-      const url = proyectoId
-        ? `http://localhost:8000/api/v1/proyectos/?proyecto_id=${proyectoId}`
-        : "http://localhost:8000/api/v1/proyectos/";
+  const handleAbrirProyectoDesdeDashboard = async (id: string) => {
+    await handleCargarProyecto(id);
+    setVistaActual("workspace");
+  };
 
-      const resp = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          nombre: nombreProyecto,
-          etapa_actual: etapaActual,
-          texto_documento: textoDocumento,
-          requisitos,
-          historias_usuario: historias,
-          tareas,
-        }),
-      });
+  const handleCrearNuevoDesdeDashboard = () => {
+    handleCrearNuevoProyecto();
+    setVistaActual("workspace");
+  };
 
-      if (!resp.ok) throw new Error("Error al persistir en base de datos.");
-      const data = await resp.json();
-      setProyectoId(data.id);
-      alert("✓ Proyecto guardado en PostgreSQL exitosamente.");
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setGuardandoBD(false);
+  const handleVolverAlDashboardConAutoGuardado = async () => {
+    // Si el proyecto tiene contenido trabajado, auto-guardar en la BD antes de ir al dashboard
+    if (textoDocumento.trim() || requisitos.length > 0 || historias.length > 0 || tareas.length > 0) {
+      await handleGuardarProyectoBD(true);
     }
+    setVistaActual("dashboard");
   };
 
   const handleSolicitarRequisitos = async (texto: string) => {
@@ -360,7 +395,21 @@ export default function App() {
           setUsuario(usr);
           localStorage.setItem("token", jwt);
           localStorage.setItem("usuario", JSON.stringify(usr));
+          setVistaActual("dashboard");
         }}
+      />
+    );
+  }
+
+  // Si la vista actual es el Dashboard de Proyectos
+  if (vistaActual === "dashboard") {
+    return (
+      <DashboardView
+        token={token}
+        usuario={usuario}
+        onAbrirProyecto={handleAbrirProyectoDesdeDashboard}
+        onCrearNuevoProyecto={handleCrearNuevoDesdeDashboard}
+        onCerrarSesion={handleCerrarSesion}
       />
     );
   }
@@ -388,13 +437,16 @@ export default function App() {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setMostrarModalProyectos(true)}
-              className="text-xs font-semibold px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition"
+              onClick={handleVolverAlDashboardConAutoGuardado}
+              disabled={guardandoBD}
+              className="text-xs font-semibold px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition flex items-center gap-1.5 disabled:opacity-50"
+              title="Guardar automáticamente y volver al Dashboard de Mis Proyectos"
             >
-              📁 Mis Proyectos
+              <span>📁</span>
+              <span>{guardandoBD ? "Guardando..." : "Mis Proyectos"}</span>
             </button>
             <button
-              onClick={handleGuardarProyectoBD}
+              onClick={() => handleGuardarProyectoBD(false)}
               disabled={guardandoBD}
               className="text-xs font-semibold px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition disabled:opacity-50"
             >
@@ -402,22 +454,14 @@ export default function App() {
             </button>
             <button
               onClick={handleCerrarSesion}
-              className="text-xs font-semibold px-3 py-1.5 border border-slate-300 text-slate-600 hover:text-slate-900 rounded-lg transition"
+              disabled={guardandoBD}
+              className="text-xs font-semibold px-3 py-1.5 border border-slate-300 text-slate-600 hover:text-slate-900 rounded-lg transition disabled:opacity-50"
+              title="Guarda automáticamente tus avances y cierra la sesión"
             >
-              Cerrar sesión
+              {guardandoBD ? "Guardando..." : "Cerrar sesión"}
             </button>
           </div>
         </header>
-
-        {mostrarModalProyectos && (
-          <ProyectosModal
-            token={token}
-            proyectoActivoId={proyectoId}
-            onCerrar={() => setMostrarModalProyectos(false)}
-            onCrearNuevo={handleCrearNuevoProyecto}
-            onCargarProyecto={handleCargarProyecto}
-          />
-        )}
 
         <div>
           <h1 className="text-2xl font-bold text-slate-900">

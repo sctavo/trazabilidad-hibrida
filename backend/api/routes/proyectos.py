@@ -32,7 +32,10 @@ def listar_proyectos_usuario(
             "nombre": p.nombre,
             "descripcion": p.descripcion,
             "etapa_actual": p.etapa_actual,
-            "creado_en": p.creado_en
+            "creado_en": p.creado_en,
+            "total_requisitos": len(p.requisitos) if p.requisitos else 0,
+            "total_historias": len(p.historias_usuario) if p.historias_usuario else 0,
+            "total_tareas": len(p.tareas) if p.tareas else 0,
         }
         for p in proyectos
     ]

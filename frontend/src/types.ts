@@ -25,3 +25,14 @@ export interface TareaItem {
   tipo: "Frontend" | "Backend" | "Base de Datos" | "Pruebas" | "DevOps";
   estimacion_horas: number;
 }
+
+export interface ProyectoResumen {
+  id: string;
+  nombre: string;
+  descripcion?: string;
+  etapa_actual: number;
+  creado_en: string;
+  total_requisitos?: number;
+  total_historias?: number;
+  total_tareas?: number;
+}
