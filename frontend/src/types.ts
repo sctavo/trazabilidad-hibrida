@@ -36,6 +36,7 @@ export interface ProyectoResumen {
   total_requisitos?: number;
   total_historias?: number;
   total_tareas?: number;
+  total_horas?: number;
 }
 
 export interface ModeloIAInfo {

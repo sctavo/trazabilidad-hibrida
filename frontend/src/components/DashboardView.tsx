@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { MODELOS_IA_CATALOGO, type ProyectoResumen, type Usuario } from "../types";
 import { PerfilConfiguracionModal } from "./PerfilConfiguracionModal";
+import { ArbolTrazabilidadModal } from "./ArbolTrazabilidadModal";
 
 interface DashboardViewProps {
   token: string;
@@ -9,6 +10,7 @@ interface DashboardViewProps {
   onCrearNuevoProyecto: () => void;
   onCerrarSesion: () => void;
   onPerfilActualizado?: (usuario: Usuario) => void;
+  tabInicial?: "proyectos" | "plan_trabajo";
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -18,6 +20,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onCrearNuevoProyecto,
   onCerrarSesion,
   onPerfilActualizado,
+  tabInicial = "proyectos",
 }) => {
   const [proyectos, setProyectos] = useState<ProyectoResumen[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -26,6 +29,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [proyectoAEliminar, setProyectoAEliminar] = useState<ProyectoResumen | null>(null);
   const [eliminando, setEliminando] = useState(false);
   const [mostrarPerfilModal, setMostrarPerfilModal] = useState(false);
+
+  // Pestañas: "proyectos" (Mis Proyectos) vs "plan_trabajo" (Plan de Trabajo / Gantt)
+  const [tabActiva, setTabActiva] = useState<"proyectos" | "plan_trabajo">(tabInicial);
+  
+  // Modal de Árbol de Trazabilidad
+  const [proyectoParaArbol, setProyectoParaArbol] = useState<ProyectoResumen | null>(null);
+
+  // Modal informativo de preparación para Gantt
+  const [modalGanttInfo, setModalGanttInfo] = useState<ProyectoResumen | null>(null);
+
+  useEffect(() => {
+    if (tabInicial) {
+      setTabActiva(tabInicial);
+    }
+  }, [tabInicial]);
 
   const fetchProyectos = async () => {
     setCargando(true);
@@ -109,6 +127,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const proyectosFiltrados = proyectos.filter((p) =>
     p.nombre.toLowerCase().includes(busqueda.toLowerCase())
   );
+
+  // Proyectos en etapa 4 para el apartado de Plan de Trabajo
+  const proyectosTerminados = proyectosFiltrados.filter((p) => p.etapa_actual === 4);
 
   const getEtapaInfo = (etapa: number) => {
     switch (etapa) {
@@ -195,6 +216,79 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       )}
 
+      {/* Modal de Información de Plan de Trabajo & Gantt */}
+      {modalGanttInfo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <span className="text-2xl">📅</span>
+                <div>
+                  <h3 className="font-black text-base text-slate-900">
+                    Plan de Trabajo: {modalGanttInfo.nombre}
+                  </h3>
+                  <span className="text-[11px] text-emerald-600 font-bold block">
+                    ✓ Backlog y horas técnicas consolidadas
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => setModalGanttInfo(null)}
+                className="text-slate-400 hover:text-slate-600 text-lg p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-4 bg-indigo-50/70 border border-indigo-200 rounded-xl space-y-2 text-xs text-indigo-950">
+              <span className="font-bold flex items-center gap-1.5 text-indigo-900">
+                <span>🚀</span> Próximo paso: Motor de Calendarización Gantt
+              </span>
+              <p className="leading-relaxed text-indigo-800 text-[11px]">
+                Este proyecto cuenta con <strong>{modalGanttInfo.total_tareas || 0} tareas técnicas</strong> y un volumen estimado de <strong>{modalGanttInfo.total_horas || 0} horas</strong>. En el siguiente paso configuraremos la fecha de inicio del proyecto, las dependencias entre tareas y la exportación de la Carta Gantt en formato Microsoft Excel (.xlsx).
+              </p>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 text-center text-xs">
+              <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+                <span className="text-sm font-black text-blue-700 block">{modalGanttInfo.total_requisitos || 0}</span>
+                <span className="text-[10px] text-slate-500 font-semibold uppercase">Requisitos</span>
+              </div>
+              <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+                <span className="text-sm font-black text-purple-700 block">{modalGanttInfo.total_historias || 0}</span>
+                <span className="text-[10px] text-slate-500 font-semibold uppercase">Historias</span>
+              </div>
+              <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+                <span className="text-sm font-black text-emerald-700 block">{modalGanttInfo.total_horas || 0}h</span>
+                <span className="text-[10px] text-slate-500 font-semibold uppercase">Horas Est.</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  const proj = modalGanttInfo;
+                  setModalGanttInfo(null);
+                  setProyectoParaArbol(proj);
+                }}
+                className="text-xs font-semibold text-indigo-700 hover:text-indigo-900 hover:underline flex items-center gap-1"
+              >
+                <span>🌳 Ver árbol de trazabilidad</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setModalGanttInfo(null)}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs transition"
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Barra de Navegación Superior */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -250,7 +344,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
-          {/* Columna Izquierda: Grid de Proyectos */}
+          {/* Columna Izquierda: Pestañas + Grid de Proyectos o Plan de Trabajo */}
           <div className="lg:col-span-8 space-y-6">
             
             {/* Cabecera del listado */}
@@ -264,7 +358,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <span>👋</span>
                 </h1>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Selecciona un proyecto para continuar la especificación o inicia uno nuevo.
+                  Gestiona tus proyectos de trazabilidad o genera planes de trabajo a partir de artefactos consolidados.
                 </p>
               </div>
 
@@ -291,6 +385,53 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               )}
             </div>
 
+            {/* Selector de Pestañas: Mis Proyectos vs Plan de Trabajo */}
+            <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+              <button
+                type="button"
+                onClick={() => setTabActiva("proyectos")}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                  tabActiva === "proyectos"
+                    ? "bg-blue-600 text-white shadow-xs"
+                    : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+                }`}
+              >
+                <span>📁</span>
+                <span>Mis Proyectos</span>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                    tabActiva === "proyectos"
+                      ? "bg-blue-700 text-white"
+                      : "bg-slate-100 text-slate-600"
+                  }`}
+                >
+                  {totalProyectos}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTabActiva("plan_trabajo")}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                  tabActiva === "plan_trabajo"
+                    ? "bg-indigo-600 text-white shadow-xs"
+                    : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+                }`}
+              >
+                <span>📊</span>
+                <span>Plan de Trabajo & Gantt</span>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                    tabActiva === "plan_trabajo"
+                      ? "bg-indigo-700 text-white"
+                      : "bg-emerald-100 text-emerald-800"
+                  }`}
+                >
+                  {proyectosCompletados} {proyectosCompletados === 1 ? "listo" : "listos"}
+                </span>
+              </button>
+            </div>
+
             {/* Estado de carga */}
             {cargando && (
               <div className="bg-white border border-slate-200 rounded-2xl p-16 text-center shadow-xs">
@@ -312,153 +453,345 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             )}
 
-            {/* Caso 1: Usuario NO tiene proyectos (Cuenta vacía) */}
-            {!cargando && !error && totalProyectos === 0 && (
-              <div className="bg-white border border-dashed border-slate-300 rounded-2xl p-12 text-center shadow-xs space-y-4">
-                <div className="w-16 h-16 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-3xl mx-auto shadow-inner">
-                  📁
-                </div>
-                <div className="max-w-md mx-auto">
-                  <h3 className="text-base font-bold text-slate-800">
-                    Aún no tienes proyectos de trazabilidad creados
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                    Comienza cargando un documento de requerimientos (PDF o TXT) o ingresando especificaciones en lenguaje natural para derivar formalmente Requisitos de Usuario, Historias y Tareas Técnicas.
-                  </p>
-                </div>
-                <div className="pt-2">
-                  <button
-                    onClick={onCrearNuevoProyecto}
-                    className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-sm transition inline-flex items-center gap-2"
-                  >
-                    <span className="text-base leading-none">+</span>
-                    <span>Crear Nuevo Proyecto</span>
-                  </button>
-                </div>
-              </div>
+            {/* PESTAÑA 1: MIS PROYECTOS (Vista General) */}
+            {tabActiva === "proyectos" && !cargando && !error && (
+              <>
+                {/* Caso 1: Usuario NO tiene proyectos (Cuenta vacía) */}
+                {totalProyectos === 0 && (
+                  <div className="bg-white border border-dashed border-slate-300 rounded-2xl p-12 text-center shadow-xs space-y-4">
+                    <div className="w-16 h-16 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-3xl mx-auto shadow-inner">
+                      📁
+                    </div>
+                    <div className="max-w-md mx-auto">
+                      <h3 className="text-base font-bold text-slate-800">
+                        Aún no tienes proyectos de trazabilidad creados
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                        Comienza cargando un documento de requerimientos (PDF o TXT) o ingresando especificaciones en lenguaje natural para derivar formalmente Requisitos de Usuario, Historias y Tareas Técnicas.
+                      </p>
+                    </div>
+                    <div className="pt-2">
+                      <button
+                        onClick={onCrearNuevoProyecto}
+                        className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-sm transition inline-flex items-center gap-2"
+                      >
+                        <span className="text-base leading-none">+</span>
+                        <span>Crear Nuevo Proyecto</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Caso 2: El usuario sí tiene proyectos en su cuenta */}
+                {totalProyectos > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    
+                    {/* Tarjeta de Acción: NUEVO PROYECTO + */}
+                    <div
+                      onClick={onCrearNuevoProyecto}
+                      className="group border-2 border-dashed border-blue-300 hover:border-blue-600 bg-blue-50/30 hover:bg-blue-50/70 rounded-2xl p-5 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-200 min-h-[200px] shadow-xs"
+                    >
+                      <div className="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 group-hover:bg-blue-600 group-hover:text-white flex items-center justify-center text-2xl font-black transition-colors mb-2 shadow-xs">
+                        +
+                      </div>
+                      <span className="font-bold text-xs uppercase tracking-wider text-blue-800 group-hover:text-blue-900 block">
+                        NUEVO PROYECTO +
+                      </span>
+                      <span className="text-[11px] text-slate-500 mt-1 block">
+                        Lienzo en blanco para iniciar ciclo
+                      </span>
+                    </div>
+
+                    {/* Tarjetas de Proyectos Existentes */}
+                    {proyectosFiltrados.map((proyecto) => {
+                      const etapaInfo = getEtapaInfo(proyecto.etapa_actual);
+                      const modeloInfo =
+                        MODELOS_IA_CATALOGO.find((m) => m.id === proyecto.modelo_ia) ||
+                        MODELOS_IA_CATALOGO[0];
+                      const fechaFormateada = new Date(proyecto.creado_en).toLocaleDateString("es-ES", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      });
+
+                      return (
+                        <div
+                          key={proyecto.id}
+                          onClick={() => onAbrirProyecto(proyecto.id)}
+                          className="bg-white border border-slate-200 hover:border-blue-400 rounded-2xl p-5 flex flex-col justify-between cursor-pointer transition-all duration-200 hover:shadow-md group relative min-h-[200px]"
+                        >
+                          {/* Cabecera de la tarjeta */}
+                          <div>
+                            <div className="flex items-start justify-between gap-2 mb-1.5">
+                              <span
+                                className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${etapaInfo.bg}`}
+                              >
+                                {etapaInfo.texto}
+                              </span>
+                              <button
+                                type="button"
+                                title="Eliminar proyecto"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setProyectoAEliminar(proyecto);
+                                }}
+                                className="text-slate-300 hover:text-red-500 text-xs p-1 rounded transition opacity-0 group-hover:opacity-100"
+                              >
+                                🗑️
+                              </button>
+                            </div>
+
+                            {/* Chip de IA utilizada para la asistencia */}
+                            <div className="mb-2">
+                              <span
+                                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${modeloInfo.colorBg} inline-flex items-center gap-1`}
+                                title={`Asistencia técnica provista por ${modeloInfo.nombre} (${modeloInfo.proveedor})`}
+                              >
+                                <span>{modeloInfo.icono}</span>
+                                <span>{modeloInfo.nombre}</span>
+                              </span>
+                            </div>
+
+                            <h3 className="font-bold text-sm text-slate-800 group-hover:text-blue-600 transition-colors line-clamp-2">
+                              {proyecto.nombre}
+                            </h3>
+
+                            {proyecto.descripcion && (
+                              <p className="text-[11px] text-slate-500 mt-1 line-clamp-2">
+                                {proyecto.descripcion}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Progreso y Footer */}
+                          <div className="mt-4 pt-3 border-t border-slate-100 space-y-2.5">
+                            {/* Barra de progreso */}
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-[10px] text-slate-400 font-medium">
+                                <span>Avance del flujo</span>
+                                <span className="font-bold text-slate-600">{etapaInfo.porcentaje}%</span>
+                              </div>
+                              <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full ${etapaInfo.barColor} transition-all duration-300`}
+                                  style={{ width: `${etapaInfo.porcentaje}%` }}
+                                ></div>
+                              </div>
+                            </div>
+
+                            {/* Conteo de artefactos */}
+                            <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1">
+                              <div className="flex items-center gap-1.5 font-medium">
+                                <span className="bg-blue-50 text-blue-700 px-1.5 py-0.2 rounded border border-blue-100 font-bold">
+                                  {proyecto.total_requisitos || 0} RU
+                                </span>
+                                <span className="bg-purple-50 text-purple-700 px-1.5 py-0.2 rounded border border-purple-100 font-bold">
+                                  {proyecto.total_historias || 0} HU
+                                </span>
+                                <span className="bg-indigo-50 text-indigo-700 px-1.5 py-0.2 rounded border border-indigo-100 font-bold">
+                                  {proyecto.total_tareas || 0} TSK
+                                </span>
+                              </div>
+                              <span className="text-[10px] text-slate-400">{fechaFormateada}</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {/* Si la búsqueda no arroja resultados */}
+                    {proyectosFiltrados.length === 0 && busqueda && (
+                      <div className="col-span-full py-8 text-center text-xs text-slate-400">
+                        No se encontraron proyectos con el nombre "{busqueda}".
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
             )}
 
-            {/* Caso 2: El usuario sí tiene proyectos en su cuenta */}
-            {!cargando && !error && totalProyectos > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* PESTAÑA 2: PLAN DE TRABAJO (Proyectos con 4 Etapas Consolidadas) */}
+            {tabActiva === "plan_trabajo" && !cargando && !error && (
+              <div className="space-y-4">
                 
-                {/* Tarjeta de Acción: NUEVO PROYECTO + */}
-                <div
-                  onClick={onCrearNuevoProyecto}
-                  className="group border-2 border-dashed border-blue-300 hover:border-blue-600 bg-blue-50/30 hover:bg-blue-50/70 rounded-2xl p-5 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-200 min-h-[200px] shadow-xs"
-                >
-                  <div className="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 group-hover:bg-blue-600 group-hover:text-white flex items-center justify-center text-2xl font-black transition-colors mb-2 shadow-xs">
-                    +
+                {/* Banner Explicativo */}
+                <div className="bg-gradient-to-r from-indigo-50/80 via-blue-50/60 to-white border border-indigo-200/80 rounded-2xl p-4 sm:p-5 flex items-start gap-3.5 shadow-2xs">
+                  <span className="text-2xl mt-0.5">📊</span>
+                  <div className="space-y-1">
+                    <h2 className="text-sm font-bold text-indigo-950">
+                      Módulo de Plan de Trabajo & Carta Gantt
+                    </h2>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      En este apartado se agrupan exclusivamente los proyectos que han finalizado sus 4 etapas de especificación. Cuentan con un backlog técnico consolidado y están en condiciones de generar cronogramas y exportar a Excel.
+                    </p>
                   </div>
-                  <span className="font-bold text-xs uppercase tracking-wider text-blue-800 group-hover:text-blue-900 block">
-                    NUEVO PROYECTO +
-                  </span>
-                  <span className="text-[11px] text-slate-500 mt-1 block">
-                    Lienzo en blanco para iniciar ciclo
-                  </span>
                 </div>
 
-                {/* Tarjetas de Proyectos Existentes */}
-                {proyectosFiltrados.map((proyecto) => {
-                  const etapaInfo = getEtapaInfo(proyecto.etapa_actual);
-                  const modeloInfo =
-                    MODELOS_IA_CATALOGO.find((m) => m.id === proyecto.modelo_ia) ||
-                    MODELOS_IA_CATALOGO[0];
-                  const fechaFormateada = new Date(proyecto.creado_en).toLocaleDateString("es-ES", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  });
-
-                  return (
-                    <div
-                      key={proyecto.id}
-                      onClick={() => onAbrirProyecto(proyecto.id)}
-                      className="bg-white border border-slate-200 hover:border-blue-400 rounded-2xl p-5 flex flex-col justify-between cursor-pointer transition-all duration-200 hover:shadow-md group relative min-h-[200px]"
-                    >
-                      {/* Cabecera de la tarjeta */}
-                      <div>
-                        <div className="flex items-start justify-between gap-2 mb-1.5">
-                          <span
-                            className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${etapaInfo.bg}`}
-                          >
-                            {etapaInfo.texto}
-                          </span>
-                          <button
-                            type="button"
-                            title="Eliminar proyecto"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setProyectoAEliminar(proyecto);
-                            }}
-                            className="text-slate-300 hover:text-red-500 text-xs p-1 rounded transition opacity-0 group-hover:opacity-100"
-                          >
-                            🗑️
-                          </button>
-                        </div>
-
-                        {/* Chip de IA utilizada para la asistencia (Requerimiento explícito) */}
-                        <div className="mb-2">
-                          <span
-                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${modeloInfo.colorBg} inline-flex items-center gap-1`}
-                            title={`Asistencia técnica provista por ${modeloInfo.nombre} (${modeloInfo.proveedor})`}
-                          >
-                            <span>{modeloInfo.icono}</span>
-                            <span>{modeloInfo.nombre}</span>
-                          </span>
-                        </div>
-
-                        <h3 className="font-bold text-sm text-slate-800 group-hover:text-blue-600 transition-colors line-clamp-2">
-                          {proyecto.nombre}
-                        </h3>
-
-                        {proyecto.descripcion && (
-                          <p className="text-[11px] text-slate-500 mt-1 line-clamp-2">
-                            {proyecto.descripcion}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Progreso y Footer */}
-                      <div className="mt-4 pt-3 border-t border-slate-100 space-y-2.5">
-                        {/* Barra de progreso */}
-                        <div className="space-y-1">
-                          <div className="flex justify-between text-[10px] text-slate-400 font-medium">
-                            <span>Avance del flujo</span>
-                            <span className="font-bold text-slate-600">{etapaInfo.porcentaje}%</span>
-                          </div>
-                          <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full ${etapaInfo.barColor} transition-all duration-300`}
-                              style={{ width: `${etapaInfo.porcentaje}%` }}
-                            ></div>
-                          </div>
-                        </div>
-
-                        {/* Conteo de artefactos */}
-                        <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1">
-                          <div className="flex items-center gap-1.5 font-medium">
-                            <span className="bg-blue-50 text-blue-700 px-1.5 py-0.2 rounded border border-blue-100 font-bold">
-                              {proyecto.total_requisitos || 0} RU
-                            </span>
-                            <span className="bg-purple-50 text-purple-700 px-1.5 py-0.2 rounded border border-purple-100 font-bold">
-                              {proyecto.total_historias || 0} HU
-                            </span>
-                            <span className="bg-indigo-50 text-indigo-700 px-1.5 py-0.2 rounded border border-indigo-100 font-bold">
-                              {proyecto.total_tareas || 0} TSK
-                            </span>
-                          </div>
-                          <span className="text-[10px] text-slate-400">{fechaFormateada}</span>
-                        </div>
-                      </div>
+                {/* Caso 1: Ningún proyecto ha alcanzado la Etapa 4 */}
+                {proyectosTerminados.length === 0 && (
+                  <div className="bg-white border border-dashed border-slate-300 rounded-2xl p-12 text-center shadow-xs space-y-4">
+                    <div className="w-16 h-16 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-3xl mx-auto shadow-inner">
+                      🎯
                     </div>
-                  );
-                })}
+                    <div className="max-w-md mx-auto">
+                      <h3 className="text-base font-bold text-slate-800">
+                        Aún no tienes proyectos listos para Plan de Trabajo
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                        Para habilitar la generación de la Carta Gantt, el proyecto debe completar las 4 etapas: Ingesta ➔ Requisitos de Usuario ➔ Historias de Usuario ➔ Tareas Técnicas.
+                      </p>
+                    </div>
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setTabActiva("proyectos")}
+                        className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-xs transition inline-flex items-center gap-2"
+                      >
+                        <span>📁 Ir a Mis Proyectos</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
 
-                {/* Si la búsqueda no arroja resultados */}
-                {proyectosFiltrados.length === 0 && busqueda && (
-                  <div className="col-span-full py-8 text-center text-xs text-slate-400">
-                    No se encontraron proyectos con el nombre "{busqueda}".
+                {/* Caso 2: Hay proyectos listos (Render en Tarjetas Anchas Horizontales) */}
+                {proyectosTerminados.length > 0 && (
+                  <div className="space-y-4">
+                    {proyectosTerminados.map((proyecto) => {
+                      const modeloInfo =
+                        MODELOS_IA_CATALOGO.find((m) => m.id === proyecto.modelo_ia) ||
+                        MODELOS_IA_CATALOGO[0];
+                      const fechaFormateada = new Date(proyecto.creado_en).toLocaleDateString("es-ES", {
+                        day: "2-digit",
+                        month: "long",
+                        year: "numeric",
+                      });
+
+                      return (
+                        <div
+                          key={proyecto.id}
+                          className="bg-white border border-slate-200 hover:border-indigo-300 rounded-2xl p-5 sm:p-6 shadow-xs hover:shadow-md transition-all duration-200 space-y-4"
+                        >
+                          {/* Fila 1: Cabecera con Badges y Horas Totales */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1.5 shadow-2xs">
+                                <span>✨</span>
+                                <span>4 ETAPAS COMPLETADAS • LISTO PARA PLAN DE TRABAJO</span>
+                              </span>
+                              <span
+                                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${modeloInfo.colorBg} inline-flex items-center gap-1`}
+                              >
+                                <span>{modeloInfo.icono}</span>
+                                <span>{modeloInfo.nombre}</span>
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                              <div className="px-3.5 py-1 bg-indigo-50 border border-indigo-200 rounded-xl text-right">
+                                <span className="text-[9px] font-extrabold text-indigo-600 uppercase tracking-wider block">
+                                  Estimación Backlog
+                                </span>
+                                <span className="text-sm font-black text-indigo-900 block leading-tight">
+                                  ⏱️ {proyecto.total_horas || 0} hrs
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                title="Eliminar proyecto"
+                                onClick={() => setProyectoAEliminar(proyecto)}
+                                className="text-slate-300 hover:text-red-500 text-xs p-1.5 rounded-lg hover:bg-slate-50 transition"
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Fila 2: Título del Proyecto y Metadatos */}
+                          <div>
+                            <h3
+                              onClick={() => onAbrirProyecto(proyecto.id)}
+                              className="font-black text-lg text-slate-900 hover:text-indigo-600 transition cursor-pointer tracking-tight"
+                            >
+                              {proyecto.nombre}
+                            </h3>
+                            {proyecto.descripcion && (
+                              <p className="text-xs text-slate-600 mt-1 line-clamp-2 leading-relaxed">
+                                {proyecto.descripcion}
+                              </p>
+                            )}
+                            <span className="text-[11px] text-slate-400 mt-1 block">
+                              Consolidado el {fechaFormateada}
+                            </span>
+                          </div>
+
+                          {/* Fila 3: Recordatorio Notorio de que el proyecto está listo para generar plan de trabajo */}
+                          <div className="p-3.5 bg-gradient-to-r from-emerald-50/70 via-indigo-50/40 to-blue-50/30 border border-emerald-200/80 rounded-xl flex items-start gap-3">
+                            <span className="text-2xl mt-0.5">📌</span>
+                            <div className="text-xs text-slate-700 space-y-1">
+                              <span className="font-extrabold text-emerald-950 block">
+                                Recordatorio: Proyecto listo para generación de Carta Gantt
+                              </span>
+                              <p className="text-[11px] text-slate-600 leading-relaxed">
+                                Este proyecto completó formalmente el ciclo de derivación. Cuenta con correspondencia estricta entre{" "}
+                                <strong className="text-blue-700 font-semibold">{proyecto.total_requisitos || 0} Requisitos</strong>,{" "}
+                                <strong className="text-purple-700 font-semibold">{proyecto.total_historias || 0} Historias</strong> y{" "}
+                                <strong className="text-emerald-700 font-semibold">{proyecto.total_tareas || 0} Tareas Técnicas</strong>{" "}
+                                (acumulando <strong>{proyecto.total_horas || 0} horas estimadas</strong>).
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Fila 4: Footer con Conteo de Artefactos y Botones de Acción */}
+                          <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            {/* Desglose de artefactos */}
+                            <div className="flex items-center gap-2">
+                              <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-lg border border-blue-200 text-xs font-bold">
+                                {proyecto.total_requisitos || 0} RU
+                              </span>
+                              <span className="bg-purple-50 text-purple-700 px-2 py-0.5 rounded-lg border border-purple-200 text-xs font-bold">
+                                {proyecto.total_historias || 0} HU
+                              </span>
+                              <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-lg border border-emerald-200 text-xs font-bold">
+                                {proyecto.total_tareas || 0} TSK
+                              </span>
+                            </div>
+
+                            {/* Acciones principales */}
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {/* Botón: Ver Árbol de Trazabilidad */}
+                              <button
+                                type="button"
+                                onClick={() => setProyectoParaArbol(proyecto)}
+                                className="px-3.5 py-2 rounded-xl border border-indigo-200 hover:border-indigo-400 bg-white hover:bg-indigo-50/60 text-indigo-700 text-xs font-bold transition flex items-center gap-1.5 shadow-2xs"
+                              >
+                                <span>🌳</span>
+                                <span>Ver Árbol de Trazabilidad</span>
+                              </button>
+
+                              {/* Botón: Generar Plan de Trabajo (Gantt) */}
+                              <button
+                                type="button"
+                                onClick={() => setModalGanttInfo(proyecto)}
+                                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
+                              >
+                                <span>📅</span>
+                                <span>Generar Plan de Trabajo (Gantt)</span>
+                              </button>
+
+                              {/* Botón: Abrir en Workspace */}
+                              <button
+                                type="button"
+                                onClick={() => onAbrirProyecto(proyecto.id)}
+                                className="px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-medium transition"
+                                title="Abrir y editar en el espacio de trabajo"
+                              >
+                                Editar
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -470,11 +803,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-6">
               
               {/* Tarjeta de Proyectos Completados (Requerimiento explícito) */}
-              <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-xl p-5 shadow-xs relative overflow-hidden">
+              <div
+                onClick={() => setTabActiva("plan_trabajo")}
+                className="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-xl p-5 shadow-xs relative overflow-hidden cursor-pointer hover:ring-2 hover:ring-indigo-400 transition"
+                title="Hacer clic para ver el apartado de Plan de Trabajo"
+              >
                 <div className="relative z-10 space-y-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-300 block">
-                    Resumen de Rendimiento
-                  </span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-300 block">
+                      Resumen de Rendimiento
+                    </span>
+                    <span className="text-[10px] text-indigo-300 font-semibold hover:underline">
+                      Ver planes →
+                    </span>
+                  </div>
                   <div className="flex items-baseline justify-between">
                     <h3 className="text-xs font-bold uppercase text-slate-200 tracking-wider">
                       PROYECTOS COMPLETADOS:
@@ -555,9 +897,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       {enEtapa3}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-50/60 border border-emerald-100">
-                    <span className="font-semibold text-emerald-900">Etapa 4: Tareas Técnicas (TSK)</span>
-                    <span className="font-bold text-emerald-700 bg-white px-2 py-0.5 rounded border border-emerald-200 text-xs">
+                  <div
+                    onClick={() => setTabActiva("plan_trabajo")}
+                    className="flex items-center justify-between p-2 rounded-lg bg-emerald-50/80 border border-emerald-200 cursor-pointer hover:bg-emerald-100/70 transition"
+                  >
+                    <span className="font-semibold text-emerald-950 flex items-center gap-1">
+                      <span>✓</span> Etapa 4: Tareas (Completado)
+                    </span>
+                    <span className="font-extrabold text-emerald-800 bg-white px-2 py-0.5 rounded border border-emerald-300 text-xs shadow-2xs">
                       {enEtapa4}
                     </span>
                   </div>
@@ -630,6 +977,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </aside>
         </div>
       </main>
+
+      {/* Modal de Árbol de Trazabilidad */}
+      {proyectoParaArbol && (
+        <ArbolTrazabilidadModal
+          proyectoId={proyectoParaArbol.id}
+          nombreProyecto={proyectoParaArbol.nombre}
+          token={token}
+          isOpen={!!proyectoParaArbol}
+          onClose={() => setProyectoParaArbol(null)}
+          onGenerarPlanTrabajo={() => {
+            const proj = proyectoParaArbol;
+            setProyectoParaArbol(null);
+            setModalGanttInfo(proj);
+          }}
+        />
+      )}
 
       {/* Modal de Configuración de Perfil */}
       {mostrarPerfilModal && usuario && (

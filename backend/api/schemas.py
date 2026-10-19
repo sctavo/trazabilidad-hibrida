@@ -144,6 +144,7 @@ class ProyectoResumenResponse(BaseModel):
     total_requisitos: Optional[int] = 0
     total_historias: Optional[int] = 0
     total_tareas: Optional[int] = 0
+    total_horas: Optional[int] = 0
 
     class Config:
         from_attributes = True

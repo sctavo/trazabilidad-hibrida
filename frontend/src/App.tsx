@@ -33,6 +33,7 @@ export default function App() {
 
   // Control de vista: "dashboard" (pantalla de bienvenida y proyectos) vs "workspace" (pipeline de 4 etapas)
   const [vistaActual, setVistaActual] = useState<"dashboard" | "workspace">("dashboard");
+  const [tabDashboardInicial, setTabDashboardInicial] = useState<"proyectos" | "plan_trabajo">("proyectos");
 
   const [proyectoId, setProyectoId] = useState<string | null>(null);
   const [nombreProyecto, setNombreProyecto] = useState("Especificación de Requisitos");
@@ -56,7 +57,11 @@ export default function App() {
   const [cargandoTareas, setCargandoTareas] = useState(false);
   const [guardandoBD, setGuardandoBD] = useState(false);
 
-  const handleGuardarProyectoBD = async (silencioso = false): Promise<boolean> => {
+  const handleGuardarProyectoBD = async (
+    silencioso = false,
+    etapaOverride?: number,
+    tareasOverride?: TareaItem[]
+  ): Promise<boolean> => {
     if (!token) return false;
     setGuardandoBD(true);
     try {
@@ -72,12 +77,12 @@ export default function App() {
         },
         body: JSON.stringify({
           nombre: nombreProyecto,
-          etapa_actual: etapaActual,
+          etapa_actual: etapaOverride !== undefined ? etapaOverride : etapaActual,
           texto_documento: textoDocumento,
           modelo_ia: modeloIa,
           requisitos,
           historias_usuario: historias,
-          tareas,
+          tareas: tareasOverride || tareas,
         }),
       });
 
@@ -183,6 +188,7 @@ export default function App() {
     if (textoDocumento.trim() || requisitos.length > 0 || historias.length > 0 || tareas.length > 0) {
       await handleGuardarProyectoBD(true);
     }
+    setTabDashboardInicial("proyectos");
     setVistaActual("dashboard");
   };
 
@@ -443,6 +449,7 @@ export default function App() {
       <DashboardView
         token={token}
         usuario={usuario}
+        tabInicial={tabDashboardInicial}
         onAbrirProyecto={handleAbrirProyectoDesdeDashboard}
         onCrearNuevoProyecto={handleCrearNuevoDesdeDashboard}
         onCerrarSesion={handleCerrarSesion}
@@ -617,9 +624,12 @@ export default function App() {
                 huSincronizadasIds={huSincronizadasIds}
                 modeloIa={modeloIa}
                 onVolver={() => setEtapaActual(3)}
-                onConfirmar={(aprobadas) => {
+                onConfirmar={async (aprobadas) => {
                   setTareas(aprobadas);
-                  alert("Plan de tareas técnicas aprobado.");
+                  setEtapaActual(4);
+                  await handleGuardarProyectoBD(true, 4, aprobadas);
+                  setTabDashboardInicial("plan_trabajo");
+                  setVistaActual("dashboard");
                 }}
                 onTareasActualizadas={(actualizadas) => setTareas(actualizadas)}
                 onMarcarHuSincronizada={handleMarcarHuSincronizada}
