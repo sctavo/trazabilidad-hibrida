@@ -26,6 +26,32 @@ export interface TareaItem {
   estimacion_horas: number;
 }
 
+export interface ParametrosCalendarizacion {
+  fechaInicio: string; // YYYY-MM-DD
+  horasPorDia: number; // 4, 6, 8
+  diasPorSemana: number; // 5 o 6
+  modalidad: "secuencial" | "disciplina"; // Secuencial por HU o Paralelo Backend/Frontend
+}
+
+export interface TareaCalendarizada extends TareaItem {
+  fechaInicio: string; // YYYY-MM-DD
+  fechaFin: string; // YYYY-MM-DD
+  duracionDias: number;
+  semanaInicio: number; // 1-indexada
+  semanaFin: number; // 1-indexada
+  huTitulo?: string;
+  ruOrigen?: string;
+}
+
+export interface SemanaGantt {
+  numero: number;
+  etiqueta: string; // "Semana 1"
+  rangoTexto: string; // "20 Oct - 24 Oct"
+  fechaInicio: string;
+  fechaFin: string;
+  horasTotales: number;
+}
+
 export interface ProyectoResumen {
   id: string;
   nombre: string;

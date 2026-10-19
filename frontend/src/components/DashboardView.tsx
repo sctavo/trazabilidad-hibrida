@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { MODELOS_IA_CATALOGO, type ProyectoResumen, type Usuario } from "../types";
 import { PerfilConfiguracionModal } from "./PerfilConfiguracionModal";
 import { ArbolTrazabilidadModal } from "./ArbolTrazabilidadModal";
+import { GanttPreviewModal } from "./GanttPreviewModal";
 
 interface DashboardViewProps {
   token: string;
@@ -36,8 +37,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   // Modal de Árbol de Trazabilidad
   const [proyectoParaArbol, setProyectoParaArbol] = useState<ProyectoResumen | null>(null);
 
-  // Modal informativo de preparación para Gantt
-  const [modalGanttInfo, setModalGanttInfo] = useState<ProyectoResumen | null>(null);
+  // Modal interactivo de Previsualización de Carta Gantt
+  const [proyectoParaGantt, setProyectoParaGantt] = useState<ProyectoResumen | null>(null);
 
   useEffect(() => {
     if (tabInicial) {
@@ -216,78 +217,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       )}
 
-      {/* Modal de Información de Plan de Trabajo & Gantt */}
-      {modalGanttInfo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <span className="text-2xl">📅</span>
-                <div>
-                  <h3 className="font-black text-base text-slate-900">
-                    Plan de Trabajo: {modalGanttInfo.nombre}
-                  </h3>
-                  <span className="text-[11px] text-emerald-600 font-bold block">
-                    ✓ Backlog y horas técnicas consolidadas
-                  </span>
-                </div>
-              </div>
-              <button
-                onClick={() => setModalGanttInfo(null)}
-                className="text-slate-400 hover:text-slate-600 text-lg p-1"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="p-4 bg-indigo-50/70 border border-indigo-200 rounded-xl space-y-2 text-xs text-indigo-950">
-              <span className="font-bold flex items-center gap-1.5 text-indigo-900">
-                <span>🚀</span> Próximo paso: Motor de Calendarización Gantt
-              </span>
-              <p className="leading-relaxed text-indigo-800 text-[11px]">
-                Este proyecto cuenta con <strong>{modalGanttInfo.total_tareas || 0} tareas técnicas</strong> y un volumen estimado de <strong>{modalGanttInfo.total_horas || 0} horas</strong>. En el siguiente paso configuraremos la fecha de inicio del proyecto, las dependencias entre tareas y la exportación de la Carta Gantt en formato Microsoft Excel (.xlsx).
-              </p>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 text-center text-xs">
-              <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
-                <span className="text-sm font-black text-blue-700 block">{modalGanttInfo.total_requisitos || 0}</span>
-                <span className="text-[10px] text-slate-500 font-semibold uppercase">Requisitos</span>
-              </div>
-              <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
-                <span className="text-sm font-black text-purple-700 block">{modalGanttInfo.total_historias || 0}</span>
-                <span className="text-[10px] text-slate-500 font-semibold uppercase">Historias</span>
-              </div>
-              <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
-                <span className="text-sm font-black text-emerald-700 block">{modalGanttInfo.total_horas || 0}h</span>
-                <span className="text-[10px] text-slate-500 font-semibold uppercase">Horas Est.</span>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => {
-                  const proj = modalGanttInfo;
-                  setModalGanttInfo(null);
-                  setProyectoParaArbol(proj);
-                }}
-                className="text-xs font-semibold text-indigo-700 hover:text-indigo-900 hover:underline flex items-center gap-1"
-              >
-                <span>🌳 Ver árbol de trazabilidad</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setModalGanttInfo(null)}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs transition"
-              >
-                Entendido
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Modal de confirmación para eliminar proyecto */}
 
       {/* Barra de Navegación Superior */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
@@ -771,7 +701,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                               {/* Botón: Generar Plan de Trabajo (Gantt) */}
                               <button
                                 type="button"
-                                onClick={() => setModalGanttInfo(proyecto)}
+                                onClick={() => setProyectoParaGantt(proyecto)}
                                 className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
                               >
                                 <span>📅</span>
@@ -989,8 +919,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           onGenerarPlanTrabajo={() => {
             const proj = proyectoParaArbol;
             setProyectoParaArbol(null);
-            setModalGanttInfo(proj);
+            setProyectoParaGantt(proj);
           }}
+        />
+      )}
+
+      {/* Modal de Previsualización de Carta Gantt & Calendarización */}
+      {proyectoParaGantt && (
+        <GanttPreviewModal
+          proyectoId={proyectoParaGantt.id}
+          nombreProyecto={proyectoParaGantt.nombre}
+          token={token}
+          isOpen={!!proyectoParaGantt}
+          onClose={() => setProyectoParaGantt(null)}
         />
       )}
 
