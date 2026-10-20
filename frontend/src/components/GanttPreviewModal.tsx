@@ -10,6 +10,15 @@ import {
   formatearFechaCorta,
   parseFecha,
 } from "../utils/calendarizacion";
+import {
+  CalendarIcon,
+  ClockIcon,
+  CloseIcon,
+  SearchIcon,
+  DownloadIcon,
+  SlidersIcon,
+  CheckIcon,
+} from "./Icons";
 
 interface GanttPreviewModalProps {
   proyectoId: string;
@@ -118,44 +127,44 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
     return coincideFiltroTipo && coincideTexto;
   });
 
-  // Colores por disciplina técnica
+  // Colores por disciplina técnica adaptados a dark mode
   const getBadgeDisciplina = (tipo: string) => {
     switch (tipo) {
       case "Base de Datos":
         return {
-          bg: "bg-amber-100 text-amber-800 border-amber-300",
-          barColor: "bg-amber-500 text-white",
-          dot: "bg-amber-500",
+          bg: "bg-amber-950/70 text-amber-300 border-amber-800/80",
+          barColor: "bg-amber-500 text-slate-950",
+          dot: "bg-amber-400",
         };
       case "Backend":
         return {
-          bg: "bg-blue-100 text-blue-800 border-blue-300",
+          bg: "bg-blue-950/70 text-sky-300 border-blue-800/80",
           barColor: "bg-blue-600 text-white",
-          dot: "bg-blue-600",
+          dot: "bg-blue-400",
         };
       case "Frontend":
         return {
-          bg: "bg-purple-100 text-purple-800 border-purple-300",
+          bg: "bg-purple-950/70 text-purple-300 border-purple-800/80",
           barColor: "bg-purple-600 text-white",
-          dot: "bg-purple-600",
+          dot: "bg-purple-400",
         };
       case "DevOps":
         return {
-          bg: "bg-cyan-100 text-cyan-800 border-cyan-300",
+          bg: "bg-cyan-950/70 text-cyan-300 border-cyan-800/80",
           barColor: "bg-cyan-600 text-white",
-          dot: "bg-cyan-600",
+          dot: "bg-cyan-400",
         };
       case "Pruebas":
         return {
-          bg: "bg-emerald-100 text-emerald-800 border-emerald-300",
+          bg: "bg-emerald-950/70 text-emerald-300 border-emerald-800/80",
           barColor: "bg-emerald-600 text-white",
-          dot: "bg-emerald-600",
+          dot: "bg-emerald-400",
         };
       default:
         return {
-          bg: "bg-slate-100 text-slate-800 border-slate-300",
+          bg: "bg-slate-800 text-slate-300 border-slate-700",
           barColor: "bg-slate-600 text-white",
-          dot: "bg-slate-600",
+          dot: "bg-slate-400",
         };
     }
   };
@@ -170,22 +179,22 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-5 overflow-y-auto">
-      <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-7xl max-h-[94vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-3 sm:p-5 overflow-y-auto font-sans text-slate-100">
+      <div className="bg-[#131d35] border border-slate-700/80 rounded-2xl w-full max-w-7xl max-h-[94vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         
         {/* Cabecera del Modal */}
-        <div className="p-5 sm:p-6 border-b border-slate-200 bg-slate-50/70 flex items-start justify-between gap-4">
+        <div className="p-5 sm:p-6 border-b border-slate-800 bg-[#0f172a]/60 flex items-start justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="text-xl">📅</span>
-              <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 border border-indigo-200">
+              <CalendarIcon className="w-5 h-5 text-indigo-400" />
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-950/80 text-indigo-300 border border-indigo-800/80">
                 Motor de Calendarización & Carta Gantt
               </span>
             </div>
-            <h2 className="text-xl font-black text-slate-900 tracking-tight">
+            <h2 className="text-xl font-bold text-white tracking-tight">
               {nombreProyecto}
             </h2>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-400">
               Distribución temporal y organización en semanas laborales para el backlog técnico derivado.
             </p>
           </div>
@@ -193,18 +202,19 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 p-2 rounded-xl hover:bg-slate-200/60 text-lg transition"
+            className="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-slate-800 text-lg transition"
             title="Cerrar modal"
           >
-            ✕
+            <CloseIcon className="w-4 h-4" />
           </button>
         </div>
 
         {/* Panel Interactivo de Parámetros de Calendarización */}
-        <div className="p-4 sm:p-5 bg-gradient-to-r from-indigo-50/40 via-white to-blue-50/40 border-b border-slate-200 space-y-4">
+        <div className="p-4 sm:p-5 bg-[#0f172a]/40 border-b border-slate-800 space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-              <span>⚙️</span> Parámetros de Planificación
+            <span className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+              <SlidersIcon className="w-4 h-4 text-sky-400" />
+              <span>Parámetros de Planificación</span>
             </span>
             <span className="text-[11px] text-slate-500 font-medium">
               Ajusta los valores para recalcular el cronograma en tiempo real
@@ -213,9 +223,10 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
             {/* 1. Fecha de Inicio */}
-            <div className="space-y-1 bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
-              <label className="font-bold text-slate-700 block">
-                🗓️ Fecha de Inicio
+            <div className="space-y-1 bg-[#131d35] p-3 rounded-xl border border-slate-800">
+              <label className="font-semibold text-slate-300 flex items-center gap-1.5">
+                <CalendarIcon className="w-3.5 h-3.5 text-sky-400" />
+                <span>Fecha de Inicio</span>
               </label>
               <input
                 type="date"
@@ -223,14 +234,15 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
                 onChange={(e) =>
                   setParams((prev) => ({ ...prev, fechaInicio: e.target.value }))
                 }
-                className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-full text-xs bg-[#0f172a] border border-slate-700 rounded-lg px-2.5 py-1.5 font-medium text-white focus:outline-none focus:border-blue-500"
               />
             </div>
 
             {/* 2. Horas por Jornada Diaria */}
-            <div className="space-y-1 bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
-              <label className="font-bold text-slate-700 block">
-                ⏱️ Jornada Diaria
+            <div className="space-y-1 bg-[#131d35] p-3 rounded-xl border border-slate-800">
+              <label className="font-semibold text-slate-300 flex items-center gap-1.5">
+                <ClockIcon className="w-3.5 h-3.5 text-teal-400" />
+                <span>Jornada Diaria</span>
               </label>
               <select
                 value={params.horasPorDia}
@@ -240,7 +252,7 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
                     horasPorDia: Number(e.target.value),
                   }))
                 }
-                className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-full text-xs bg-[#0f172a] border border-slate-700 rounded-lg px-2.5 py-1.5 font-medium text-white focus:outline-none focus:border-blue-500"
               >
                 <option value={4}>4 hrs / día (Part-time)</option>
                 <option value={6}>6 hrs / día (Flexible)</option>
@@ -249,9 +261,10 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
             </div>
 
             {/* 3. Días Laborales por Semana */}
-            <div className="space-y-1 bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
-              <label className="font-bold text-slate-700 block">
-                📆 Días Laborales
+            <div className="space-y-1 bg-[#131d35] p-3 rounded-xl border border-slate-800">
+              <label className="font-semibold text-slate-300 flex items-center gap-1.5">
+                <CalendarIcon className="w-3.5 h-3.5 text-purple-400" />
+                <span>Días Laborales</span>
               </label>
               <select
                 value={params.diasPorSemana}
@@ -261,7 +274,7 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
                     diasPorSemana: Number(e.target.value),
                   }))
                 }
-                className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-full text-xs bg-[#0f172a] border border-slate-700 rounded-lg px-2.5 py-1.5 font-medium text-white focus:outline-none focus:border-blue-500"
               >
                 <option value={5}>5 días (Lunes a Viernes)</option>
                 <option value={6}>6 días (Lunes a Sábado)</option>
@@ -269,9 +282,10 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
             </div>
 
             {/* 4. Modalidad de Asignación */}
-            <div className="space-y-1 bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
-              <label className="font-bold text-slate-700 block">
-                🔀 Estrategia de Asignación
+            <div className="space-y-1 bg-[#131d35] p-3 rounded-xl border border-slate-800">
+              <label className="font-semibold text-slate-300 flex items-center gap-1.5">
+                <SlidersIcon className="w-3.5 h-3.5 text-amber-400" />
+                <span>Estrategia de Asignación</span>
               </label>
               <select
                 value={params.modalidad}
@@ -281,7 +295,7 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
                     modalidad: e.target.value as "secuencial" | "disciplina",
                   }))
                 }
-                className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-full text-xs bg-[#0f172a] border border-slate-700 rounded-lg px-2.5 py-1.5 font-medium text-white focus:outline-none focus:border-blue-500"
               >
                 <option value="secuencial">Secuencial Ágil por HU</option>
                 <option value="disciplina">Paralelo (Frontend / Backend)</option>
@@ -292,48 +306,48 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
 
         {/* Barra Ejecutiva de Resultados y Métricas del Cronograma */}
         {resultado && (
-          <div className="px-5 sm:px-6 py-3 bg-white border-b border-slate-200 grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
+          <div className="px-5 sm:px-6 py-3 bg-[#0f172a]/60 border-b border-slate-800 grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
             <div className="space-y-0.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase block">
+              <span className="text-[10px] font-bold text-slate-500 uppercase block tracking-wider">
                 Fecha Inicio
               </span>
-              <span className="font-bold text-slate-900 text-xs">
+              <span className="font-bold text-slate-200 text-xs">
                 {formatearFechaCorta(parseFecha(resultado.fechaInicioProyecto), true)}
               </span>
             </div>
 
             <div className="space-y-0.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase block">
+              <span className="text-[10px] font-bold text-slate-500 uppercase block tracking-wider">
                 Fin Estimado
               </span>
-              <span className="font-bold text-indigo-700 text-xs">
+              <span className="font-bold text-sky-400 text-xs">
                 {formatearFechaCorta(parseFecha(resultado.fechaFinProyecto), true)}
               </span>
             </div>
 
             <div className="space-y-0.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase block">
+              <span className="text-[10px] font-bold text-slate-500 uppercase block tracking-wider">
                 Total Semanas
               </span>
-              <span className="font-black text-slate-900 text-sm">
+              <span className="font-bold text-white text-sm">
                 {resultado.totalSemanas} semanas
               </span>
             </div>
 
             <div className="space-y-0.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase block">
+              <span className="text-[10px] font-bold text-slate-500 uppercase block tracking-wider">
                 Esfuerzo Total
               </span>
-              <span className="font-bold text-emerald-700 text-xs">
-                ⏱️ {resultado.totalHoras} hrs ({resultado.totalDiasHabiles} días hábiles)
+              <span className="font-bold text-emerald-400 text-xs">
+                {resultado.totalHoras} hrs ({resultado.totalDiasHabiles} días hábiles)
               </span>
             </div>
 
             <div className="space-y-0.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase block">
+              <span className="text-[10px] font-bold text-slate-500 uppercase block tracking-wider">
                 Ritmo Promedio
               </span>
-              <span className="font-bold text-slate-800 text-xs">
+              <span className="font-semibold text-slate-300 text-xs">
                 ~{resultado.horasPorSemanaPromedio} hrs / semana
               </span>
             </div>
@@ -341,20 +355,20 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
         )}
 
         {/* Barra de Filtros y Búsqueda */}
-        <div className="px-5 sm:px-6 py-2.5 bg-slate-50/60 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="px-5 sm:px-6 py-2.5 bg-[#0f172a]/40 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
           {/* Filtros por Disciplina */}
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-[11px] font-bold text-slate-500 mr-1">Filtrar:</span>
+            <span className="text-[11px] font-semibold text-slate-400 mr-1">Filtrar:</span>
             {["TODOS", "Base de Datos", "Backend", "Frontend", "Pruebas", "DevOps"].map(
               (tipo) => (
                 <button
                   key={tipo}
                   type="button"
                   onClick={() => setFiltroTipo(tipo)}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition ${
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition ${
                     filtroTipo === tipo
-                      ? "bg-indigo-600 text-white shadow-2xs"
-                      : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+                      ? "bg-blue-600 text-white shadow-xs"
+                      : "bg-[#0f172a] text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800"
                   }`}
                 >
                   {tipo}
@@ -370,60 +384,60 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
               placeholder="Buscar tarea o código..."
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
-              className="text-xs bg-white border border-slate-300 rounded-lg pl-7 pr-3 py-1 w-44 sm:w-56 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="text-xs bg-[#0f172a] border border-slate-700 rounded-lg pl-7 pr-3 py-1 w-44 sm:w-56 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
             />
-            <span className="absolute left-2 top-1.5 text-slate-400 text-xs">🔍</span>
+            <SearchIcon className="absolute left-2 top-2 text-slate-500 w-3.5 h-3.5" />
           </div>
         </div>
 
         {/* Previsualización de la Carta Gantt (Grid Tabla + Cronograma) */}
-        <div className="flex-1 overflow-auto bg-white p-4 sm:p-6">
+        <div className="flex-1 overflow-auto bg-[#0f172a]/80 p-4 sm:p-6">
           {cargando && (
             <div className="py-24 text-center">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mx-auto mb-3"></div>
-              <p className="text-xs font-semibold text-slate-600">
-                Construyendo el modelo de calendarización del proyecto...
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500 mx-auto mb-3"></div>
+              <p className="text-xs font-semibold text-slate-400">
+                Construyendo el cronograma de trabajo...
               </p>
             </div>
           )}
 
           {error && !cargando && (
-            <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs text-center">
+            <div className="p-4 rounded-xl bg-red-950/50 border border-red-800 text-red-300 text-xs text-center">
               <p className="font-bold mb-1">Error al generar la Carta Gantt</p>
               <p>{error}</p>
             </div>
           )}
 
           {!cargando && !error && resultado && (
-            <div className="min-w-[900px] border border-slate-200 rounded-xl overflow-hidden shadow-xs">
+            <div className="min-w-[900px] border border-slate-800 rounded-xl overflow-hidden bg-[#131d35] shadow-xl">
               
               {/* Encabezado del Gantt: Columnas de Información + Columnas de Semanas */}
-              <div className="grid grid-cols-12 bg-slate-100/90 border-b border-slate-200 text-[11px] font-bold text-slate-700 sticky top-0 z-20">
+              <div className="grid grid-cols-12 bg-[#0f172a] border-b border-slate-800 text-[11px] font-semibold text-slate-300 sticky top-0 z-20">
                 {/* Lado Izquierdo: Info de la Tarea (5 columnas) */}
-                <div className="col-span-2 p-2.5 border-r border-slate-200">
+                <div className="col-span-2 p-2.5 border-r border-slate-800">
                   Código & Disciplina
                 </div>
-                <div className="col-span-2 p-2.5 border-r border-slate-200">
+                <div className="col-span-2 p-2.5 border-r border-slate-800">
                   Tarea & HU Origen
                 </div>
-                <div className="col-span-1 p-2.5 border-r border-slate-200 text-center">
+                <div className="col-span-1 p-2.5 border-r border-slate-800 text-center">
                   Duración
                 </div>
 
-                {/* Lado Derecho: Semanas (7 columnas distribuidas según el total de semanas) */}
-                <div className="col-span-7 flex divide-x divide-slate-200 overflow-x-auto">
+                {/* Lado Derecho: Semanas */}
+                <div className="col-span-7 flex divide-x divide-slate-800 overflow-x-auto">
                   {resultado.semanas.map((sem) => (
                     <div
                       key={sem.numero}
-                      className="flex-1 min-w-[90px] p-2 text-center bg-slate-50"
+                      className="flex-1 min-w-[90px] p-2 text-center bg-[#0f172a]"
                     >
-                      <span className="block text-[11px] font-black text-indigo-900">
+                      <span className="block text-[11px] font-bold text-sky-400">
                         {sem.etiqueta}
                       </span>
-                      <span className="block text-[9px] text-slate-500 font-medium">
+                      <span className="block text-[9px] text-slate-400 font-medium">
                         {sem.rangoTexto}
                       </span>
-                      <span className="block text-[9px] font-extrabold text-indigo-600 mt-0.5">
+                      <span className="block text-[9px] font-bold text-teal-400 mt-0.5">
                         {sem.horasTotales}h
                       </span>
                     </div>
@@ -432,9 +446,9 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
               </div>
 
               {/* Filas de Tareas del Gantt */}
-              <div className="divide-y divide-slate-100 text-xs">
+              <div className="divide-y divide-slate-800/80 text-xs">
                 {tareasFiltradas.length === 0 ? (
-                  <div className="py-12 text-center text-slate-400 text-xs">
+                  <div className="py-12 text-center text-slate-500 text-xs">
                     No hay tareas que coincidan con los filtros seleccionados.
                   </div>
                 ) : (
@@ -444,33 +458,33 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
                     return (
                       <div
                         key={tarea.id}
-                        className="grid grid-cols-12 hover:bg-slate-50/80 transition-colors items-center group"
+                        className="grid grid-cols-12 hover:bg-slate-800/40 transition-colors items-center group"
                       >
                         {/* Columna 1: Código y Disciplina */}
-                        <div className="col-span-2 p-2.5 border-r border-slate-100 flex items-center gap-1.5 flex-wrap">
-                          <span className="font-extrabold text-[11px] px-1.5 py-0.5 rounded bg-slate-800 text-white">
+                        <div className="col-span-2 p-2.5 border-r border-slate-800 flex items-center gap-1.5 flex-wrap">
+                          <span className="font-mono font-bold text-[11px] px-1.5 py-0.5 rounded bg-slate-800 text-white border border-slate-700">
                             {tarea.id}
                           </span>
                           <span
-                            className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${badge.bg}`}
+                            className={`text-[9px] font-semibold px-1.5 py-0.5 rounded border ${badge.bg}`}
                           >
                             {tarea.tipo}
                           </span>
                         </div>
 
                         {/* Columna 2: Título y HU Origen */}
-                        <div className="col-span-2 p-2.5 border-r border-slate-100 min-w-0">
-                          <span className="font-bold text-slate-900 block truncate" title={tarea.titulo}>
+                        <div className="col-span-2 p-2.5 border-r border-slate-800 min-w-0">
+                          <span className="font-semibold text-slate-200 block truncate" title={tarea.titulo}>
                             {tarea.titulo}
                           </span>
-                          <span className="text-[10px] text-purple-700 block truncate" title={tarea.huTitulo}>
+                          <span className="text-[10px] text-purple-300 block truncate" title={tarea.huTitulo}>
                             ↳ {tarea.hu_origen}: {tarea.huTitulo || "Historia asociada"}
                           </span>
                         </div>
 
                         {/* Columna 3: Horas y Días Hábiles */}
-                        <div className="col-span-1 p-2.5 border-r border-slate-100 text-center">
-                          <span className="font-extrabold text-slate-800 block text-xs">
+                        <div className="col-span-1 p-2.5 border-r border-slate-800 text-center">
+                          <span className="font-bold text-slate-200 block text-xs">
                             {tarea.estimacion_horas}h
                           </span>
                           <span className="text-[10px] text-slate-400 block">
@@ -479,7 +493,7 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
                         </div>
 
                         {/* Columna 4 a 12: Grilla Visual de Línea de Tiempo (Semanas) */}
-                        <div className="col-span-7 flex divide-x divide-slate-100 h-full py-2 px-1 relative">
+                        <div className="col-span-7 flex divide-x divide-slate-800/60 h-full py-2 px-1 relative">
                           {resultado.semanas.map((sem) => {
                             const estaEnSemana =
                               tarea.semanaInicio <= sem.numero &&
@@ -496,7 +510,7 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
                                 {estaEnSemana && (
                                   <div
                                     title={`[${tarea.id}] ${tarea.titulo}\n${tarea.tipo} - ${tarea.estimacion_horas}h\nInicio: ${formatearFechaCorta(parseFecha(tarea.fechaInicio))}\nFin: ${formatearFechaCorta(parseFecha(tarea.fechaFin))}`}
-                                    className={`w-full h-6 rounded-md ${badge.barColor} flex items-center justify-between px-2 text-[10px] font-bold shadow-2xs transition-transform duration-100 group-hover:scale-[1.02] cursor-pointer ${
+                                    className={`w-full h-6 rounded-md ${badge.barColor} flex items-center justify-between px-2 text-[10px] font-bold shadow-xs transition-transform duration-100 group-hover:scale-[1.02] cursor-pointer ${
                                       esInicio ? "rounded-l-md" : "rounded-l-none"
                                     } ${esFin ? "rounded-r-md" : "rounded-r-none"}`}
                                   >
@@ -524,25 +538,25 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
         </div>
 
         {/* Footer del Modal con Botones y Notificaciones */}
-        <div className="p-4 sm:p-5 border-t border-slate-200 bg-slate-50/80 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="p-4 sm:p-5 border-t border-slate-800 bg-[#0f172a]/80 flex flex-col sm:flex-row items-center justify-between gap-3">
           
           {/* Leyenda y feedback */}
           <div className="flex items-center gap-3 text-xs flex-wrap">
-            <span className="font-bold text-slate-700">Disciplinas:</span>
+            <span className="font-semibold text-slate-300">Disciplinas:</span>
             <div className="flex items-center gap-2 text-[11px]">
-              <span className="inline-flex items-center gap-1">
+              <span className="inline-flex items-center gap-1.5 text-slate-300">
                 <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> BD
               </span>
-              <span className="inline-flex items-center gap-1">
+              <span className="inline-flex items-center gap-1.5 text-slate-300">
                 <span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span> Backend
               </span>
-              <span className="inline-flex items-center gap-1">
+              <span className="inline-flex items-center gap-1.5 text-slate-300">
                 <span className="w-2.5 h-2.5 rounded-full bg-purple-600"></span> Frontend
               </span>
-              <span className="inline-flex items-center gap-1">
+              <span className="inline-flex items-center gap-1.5 text-slate-300">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-600"></span> Pruebas
               </span>
-              <span className="inline-flex items-center gap-1">
+              <span className="inline-flex items-center gap-1.5 text-slate-300">
                 <span className="w-2.5 h-2.5 rounded-full bg-cyan-600"></span> DevOps
               </span>
             </div>
@@ -551,15 +565,16 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
           {/* Botones de Acción */}
           <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end relative">
             {mensajeExcel && (
-              <div className="absolute -top-12 right-0 bg-slate-900 text-white text-[11px] px-3 py-1.5 rounded-xl shadow-lg animate-in fade-in slide-in-from-bottom-2 whitespace-nowrap">
-                ✨ Previsualización aprobada. Listo para implementar exportación nativa a Excel.
+              <div className="absolute -top-12 right-0 bg-slate-900 border border-slate-700 text-white text-[11px] px-3 py-1.5 rounded-xl shadow-lg animate-in fade-in slide-in-from-bottom-2 whitespace-nowrap flex items-center gap-1.5">
+                <CheckIcon className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Previsualización aprobada. Listo para implementar exportación a Excel.</span>
               </div>
             )}
 
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200/70 border border-slate-300 rounded-xl transition"
+              className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-700 rounded-xl transition"
             >
               Cerrar
             </button>
@@ -567,13 +582,13 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
             <button
               type="button"
               onClick={handleExportarExcelClick}
-              className="px-5 py-2 text-xs font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs transition flex items-center gap-2"
+              className="px-5 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow-xs transition flex items-center gap-2"
               title="Exportar Carta Gantt y cronograma a archivo Excel"
             >
-              <span>📊</span>
+              <DownloadIcon className="w-4 h-4" />
               <span>Exportar a Excel (.xlsx)</span>
-              <span className="text-[10px] bg-emerald-700 px-1.5 py-0.2 rounded font-medium">
-                Paso siguiente
+              <span className="text-[10px] bg-emerald-800/80 text-emerald-200 px-1.5 py-0.5 rounded font-mono">
+                Próximo paso
               </span>
             </button>
           </div>

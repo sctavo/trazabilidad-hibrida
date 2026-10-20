@@ -3,6 +3,19 @@ import { MODELOS_IA_CATALOGO, type ProyectoResumen, type Usuario } from "../type
 import { PerfilConfiguracionModal } from "./PerfilConfiguracionModal";
 import { ArbolTrazabilidadModal } from "./ArbolTrazabilidadModal";
 import { GanttPreviewModal } from "./GanttPreviewModal";
+import {
+  FolderIcon,
+  ChartIcon,
+  GanttIcon,
+  TrashIcon,
+  SettingsIcon,
+  SearchIcon,
+  TreeIcon,
+  CalendarIcon,
+  ClockIcon,
+  CheckIcon,
+  PlusIcon,
+} from "./Icons";
 
 interface DashboardViewProps {
   token: string;
@@ -33,7 +46,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   // Pestañas: "proyectos" (Mis Proyectos) vs "plan_trabajo" (Plan de Trabajo / Gantt)
   const [tabActiva, setTabActiva] = useState<"proyectos" | "plan_trabajo">(tabInicial);
-  
+
   // Modal de Árbol de Trazabilidad
   const [proyectoParaArbol, setProyectoParaArbol] = useState<ProyectoResumen | null>(null);
 
@@ -89,7 +102,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   // Cálculos para métricas del dashboard y la barra lateral
   const totalProyectos = proyectos.length;
-  // Consideramos completado si alcanzó la Etapa 4 (Tareas Técnicas consolidadas)
   const proyectosCompletados = proyectos.filter((p) => p.etapa_actual === 4).length;
   const porcentajeCompletitud = totalProyectos > 0 ? Math.round((proyectosCompletados / totalProyectos) * 100) : 0;
 
@@ -137,70 +149,72 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       case 0:
         return {
           texto: "Paso 0: Motor IA",
-          bg: "bg-slate-50 text-slate-700 border-slate-200",
-          barColor: "bg-slate-400",
+          bg: "bg-slate-800 text-slate-300 border-slate-700",
+          barColor: "bg-slate-500",
           porcentaje: 10,
         };
       case 1:
         return {
           texto: "Etapa 1: Ingesta",
-          bg: "bg-blue-50 text-blue-700 border-blue-200",
+          bg: "bg-blue-500/15 text-sky-400 border-blue-500/30",
           barColor: "bg-blue-500",
           porcentaje: 25,
         };
       case 2:
         return {
           texto: "Etapa 2: Requisitos (RU)",
-          bg: "bg-sky-50 text-sky-700 border-sky-200",
+          bg: "bg-sky-500/15 text-sky-400 border-sky-500/30",
           barColor: "bg-sky-500",
           porcentaje: 50,
         };
       case 3:
         return {
           texto: "Etapa 3: Historias (HU)",
-          bg: "bg-purple-50 text-purple-700 border-purple-200",
+          bg: "bg-purple-500/15 text-purple-300 border-purple-500/30",
           barColor: "bg-purple-500",
           porcentaje: 75,
         };
       case 4:
         return {
           texto: "Etapa 4: Tareas (Completado)",
-          bg: "bg-emerald-50 text-emerald-700 border-emerald-300",
-          barColor: "bg-emerald-500",
+          bg: "bg-teal-500/15 text-teal-300 border-teal-500/30",
+          barColor: "bg-teal-400",
           porcentaje: 100,
         };
       default:
         return {
           texto: `Etapa ${etapa}`,
-          bg: "bg-slate-50 text-slate-700 border-slate-200",
-          barColor: "bg-slate-400",
+          bg: "bg-slate-800 text-slate-300 border-slate-700",
+          barColor: "bg-slate-500",
           porcentaje: 25,
         };
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
+    <div className="min-h-screen bg-[#0f172a] text-slate-100 font-sans">
       {/* Modal de confirmación para eliminar proyecto */}
       {proyectoAEliminar && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-xl">
-            <div className="flex items-center gap-3 text-red-600">
-              <span className="text-2xl">🗑️</span>
-              <h3 className="font-bold text-base text-slate-800">¿Eliminar proyecto?</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className="bg-[#131d35] border border-slate-700 rounded-3xl max-w-md w-full p-6 sm:p-7 space-y-4 shadow-2xl text-slate-100">
+            <div className="flex items-center gap-3 text-red-400">
+              <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/20">
+                <TrashIcon className="w-5 h-5 text-red-400" />
+              </div>
+              <h3 className="font-bold text-base text-white">¿Eliminar proyecto?</h3>
             </div>
-            <p className="text-xs text-slate-600 leading-relaxed">
+            <p className="text-xs text-slate-300 leading-relaxed">
               Estás a punto de eliminar{" "}
-              <strong className="text-slate-900 font-semibold">{proyectoAEliminar.nombre}</strong>.
+              <strong className="text-white font-semibold">{proyectoAEliminar.nombre}</strong>.
               Esta acción eliminará de forma irreversible el documento fuente y todos los Requisitos de Usuario,
               Historias de Usuario y Tareas Técnicas asociadas en la base de datos.
             </p>
-            <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+            <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-800">
               <button
                 type="button"
                 disabled={eliminando}
                 onClick={() => setProyectoAEliminar(null)}
-                className="text-xs px-3.5 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-medium transition"
+                className="text-xs px-4 py-2 border border-slate-700 text-slate-300 rounded-xl hover:bg-slate-800 font-medium transition"
               >
                 Cancelar
               </button>
@@ -208,7 +222,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 type="button"
                 disabled={eliminando}
                 onClick={handleConfirmarEliminar}
-                className="text-xs px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg shadow-xs transition disabled:opacity-50"
+                className="text-xs px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl shadow-lg transition disabled:opacity-50"
               >
                 {eliminando ? "Eliminando..." : "Sí, eliminar proyecto"}
               </button>
@@ -217,35 +231,33 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       )}
 
-      {/* Modal de confirmación para eliminar proyecto */}
-
       {/* Barra de Navegación Superior */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <header className="bg-[#131d35] border-b border-slate-800 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-sm shadow-xs">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center font-black text-sm shadow-[0_0_20px_rgba(37,99,235,0.35)] border border-blue-400/30">
               RQ
             </div>
             <div>
-              <span className="font-extrabold text-base tracking-tight text-slate-900 block leading-tight">
+              <span className="font-extrabold text-lg tracking-tight text-white block leading-tight">
                 REQGEN
               </span>
-              <span className="text-[10px] text-slate-500 font-medium block">
+              <span className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase block">
                 Plataforma de Trazabilidad Híbrida
               </span>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2.5 text-right">
-              <div className="w-8 h-8 rounded-full bg-blue-100 border border-blue-200 text-blue-700 flex items-center justify-center font-bold text-xs shadow-2xs">
+            <div className="flex items-center gap-3 text-right">
+              <div className="w-9 h-9 rounded-full bg-blue-600/20 border border-blue-500/30 text-sky-400 flex items-center justify-center font-bold text-xs">
                 {(usuario?.apodo || usuario?.nombre || "AN").slice(0, 2).toUpperCase()}
               </div>
               <div className="hidden sm:block">
-                <span className="text-xs font-bold text-slate-800 block leading-tight">
+                <span className="text-xs font-bold text-white block leading-tight">
                   {usuario?.apodo ? `@${usuario.apodo}` : usuario?.nombre || "Analista"}
                 </span>
-                <span className="text-[11px] text-slate-500 block leading-tight">
+                <span className="text-[11px] text-slate-400 block leading-tight">
                   {usuario?.email}
                 </span>
               </div>
@@ -253,16 +265,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             <button
               onClick={() => setMostrarPerfilModal(true)}
-              className="text-xs font-semibold px-3 py-1.5 border border-slate-200 text-slate-700 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50/50 rounded-lg transition flex items-center gap-1.5"
+              className="text-xs font-semibold px-3.5 py-2 border border-slate-700 text-slate-300 hover:text-white hover:border-slate-600 hover:bg-slate-800 rounded-xl transition flex items-center gap-1.5"
               title="Configuración de perfil (apodo, contraseña, baja)"
             >
-              <span>⚙️</span>
+              <SettingsIcon className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Mi Perfil</span>
             </button>
 
             <button
               onClick={onCerrarSesion}
-              className="text-xs font-semibold px-3 py-1.5 border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition"
+              className="text-xs font-semibold px-3.5 py-2 border border-slate-700 text-slate-400 hover:text-white hover:bg-red-600/80 hover:border-transparent rounded-xl transition"
             >
               Cerrar sesión
             </button>
@@ -280,35 +292,34 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {/* Cabecera del listado */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider block mb-0.5">
+                <span className="text-[10px] font-bold text-sky-400 uppercase tracking-wider block mb-1">
                   Panel de Control
                 </span>
-                <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                <h1 className="text-2xl font-black text-white tracking-tight flex items-center gap-2">
                   <span>Hola, {usuario?.apodo || usuario?.nombre || "Analista"}</span>
-                  <span>👋</span>
                 </h1>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-slate-400 mt-1">
                   Gestiona tus proyectos de trazabilidad o genera planes de trabajo a partir de artefactos consolidados.
                 </p>
               </div>
 
               {totalProyectos > 0 && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2.5">
                   <div className="relative">
                     <input
                       type="text"
                       placeholder="Buscar por nombre..."
                       value={busqueda}
                       onChange={(e) => setBusqueda(e.target.value)}
-                      className="text-xs bg-white border border-slate-300 rounded-lg pl-8 pr-3 py-1.5 w-48 sm:w-56 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      className="text-xs bg-[#131d35] text-white border border-slate-700 rounded-xl pl-8 pr-3 py-2 w-48 sm:w-56 focus:outline-none focus:border-blue-500 placeholder-slate-500"
                     />
-                    <span className="absolute left-2.5 top-2 text-slate-400 text-xs">🔍</span>
+                    <SearchIcon className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
                   </div>
                   <button
                     onClick={onCrearNuevoProyecto}
-                    className="text-xs font-semibold px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-xs transition flex items-center gap-1.5"
+                    className="text-xs font-bold px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-lg shadow-blue-600/20 transition flex items-center gap-1.5"
                   >
-                    <span>+</span>
+                    <PlusIcon className="w-3.5 h-3.5" />
                     <span>Nuevo</span>
                   </button>
                 </div>
@@ -316,23 +327,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
 
             {/* Selector de Pestañas: Mis Proyectos vs Plan de Trabajo */}
-            <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+            <div className="flex items-center gap-2.5 border-b border-slate-800 pb-3">
               <button
                 type="button"
                 onClick={() => setTabActiva("proyectos")}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
                   tabActiva === "proyectos"
-                    ? "bg-blue-600 text-white shadow-xs"
-                    : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+                    ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
+                    : "bg-[#131d35] text-slate-400 hover:text-white border border-slate-800"
                 }`}
               >
-                <span>📁</span>
+                <FolderIcon className="w-3.5 h-3.5" />
                 <span>Mis Proyectos</span>
                 <span
                   className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
                     tabActiva === "proyectos"
                       ? "bg-blue-700 text-white"
-                      : "bg-slate-100 text-slate-600"
+                      : "bg-slate-800 text-slate-300"
                   }`}
                 >
                   {totalProyectos}
@@ -342,19 +353,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 type="button"
                 onClick={() => setTabActiva("plan_trabajo")}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
                   tabActiva === "plan_trabajo"
-                    ? "bg-indigo-600 text-white shadow-xs"
-                    : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+                    ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
+                    : "bg-[#131d35] text-slate-400 hover:text-white border border-slate-800"
                 }`}
               >
-                <span>📊</span>
+                <GanttIcon className="w-3.5 h-3.5" />
                 <span>Plan de Trabajo & Gantt</span>
                 <span
                   className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
                     tabActiva === "plan_trabajo"
-                      ? "bg-indigo-700 text-white"
-                      : "bg-emerald-100 text-emerald-800"
+                      ? "bg-blue-700 text-teal-300"
+                      : "bg-teal-500/15 text-teal-300 border border-teal-500/30"
                   }`}
                 >
                   {proyectosCompletados} {proyectosCompletados === 1 ? "listo" : "listos"}
@@ -364,19 +375,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             {/* Estado de carga */}
             {cargando && (
-              <div className="bg-white border border-slate-200 rounded-2xl p-16 text-center shadow-xs">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-3"></div>
-                <p className="text-xs font-semibold text-slate-600">Cargando tus proyectos desde PostgreSQL...</p>
+              <div className="bg-[#131d35] border border-slate-800 rounded-3xl p-16 text-center shadow-xl">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500 mx-auto mb-3"></div>
+                <p className="text-xs font-semibold text-slate-400">Cargando tus proyectos desde PostgreSQL...</p>
               </div>
             )}
 
             {/* Error al cargar */}
             {error && !cargando && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-xs text-red-700 flex items-center justify-between">
+              <div className="bg-red-500/10 border border-red-500/25 rounded-2xl p-4 text-xs text-red-400 flex items-center justify-between">
                 <span>{error}</span>
                 <button
                   onClick={fetchProyectos}
-                  className="font-bold underline ml-2 hover:text-red-900"
+                  className="font-bold underline ml-2 hover:text-red-300"
                 >
                   Reintentar
                 </button>
@@ -388,24 +399,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <>
                 {/* Caso 1: Usuario NO tiene proyectos (Cuenta vacía) */}
                 {totalProyectos === 0 && (
-                  <div className="bg-white border border-dashed border-slate-300 rounded-2xl p-12 text-center shadow-xs space-y-4">
-                    <div className="w-16 h-16 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-3xl mx-auto shadow-inner">
-                      📁
+                  <div className="bg-[#131d35] border border-dashed border-slate-700 rounded-3xl p-12 text-center shadow-xl space-y-4">
+                    <div className="w-16 h-16 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-sky-400 flex items-center justify-center mx-auto">
+                      <FolderIcon className="w-8 h-8" />
                     </div>
                     <div className="max-w-md mx-auto">
-                      <h3 className="text-base font-bold text-slate-800">
+                      <h3 className="text-base font-bold text-white">
                         Aún no tienes proyectos de trazabilidad creados
                       </h3>
-                      <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                      <p className="text-xs text-slate-400 mt-1 leading-relaxed">
                         Comienza cargando un documento de requerimientos (PDF o TXT) o ingresando especificaciones en lenguaje natural para derivar formalmente Requisitos de Usuario, Historias y Tareas Técnicas.
                       </p>
                     </div>
                     <div className="pt-2">
                       <button
                         onClick={onCrearNuevoProyecto}
-                        className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-sm transition inline-flex items-center gap-2"
+                        className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-blue-600/20 transition inline-flex items-center gap-2"
                       >
-                        <span className="text-base leading-none">+</span>
+                        <PlusIcon className="w-4 h-4" />
                         <span>Crear Nuevo Proyecto</span>
                       </button>
                     </div>
@@ -419,12 +430,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     {/* Tarjeta de Acción: NUEVO PROYECTO + */}
                     <div
                       onClick={onCrearNuevoProyecto}
-                      className="group border-2 border-dashed border-blue-300 hover:border-blue-600 bg-blue-50/30 hover:bg-blue-50/70 rounded-2xl p-5 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-200 min-h-[200px] shadow-xs"
+                      className="group border-2 border-dashed border-slate-700/80 hover:border-blue-500 bg-[#131d35]/50 hover:bg-[#131d35] rounded-2xl p-5 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-200 min-h-[210px]"
                     >
-                      <div className="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 group-hover:bg-blue-600 group-hover:text-white flex items-center justify-center text-2xl font-black transition-colors mb-2 shadow-xs">
-                        +
+                      <div className="w-12 h-12 rounded-xl bg-blue-500/15 text-sky-400 group-hover:bg-blue-600 group-hover:text-white flex items-center justify-center transition-colors mb-3">
+                        <PlusIcon className="w-6 h-6" />
                       </div>
-                      <span className="font-bold text-xs uppercase tracking-wider text-blue-800 group-hover:text-blue-900 block">
+                      <span className="font-bold text-xs uppercase tracking-wider text-slate-300 group-hover:text-sky-400 block">
                         NUEVO PROYECTO +
                       </span>
                       <span className="text-[11px] text-slate-500 mt-1 block">
@@ -448,11 +459,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         <div
                           key={proyecto.id}
                           onClick={() => onAbrirProyecto(proyecto.id)}
-                          className="bg-white border border-slate-200 hover:border-blue-400 rounded-2xl p-5 flex flex-col justify-between cursor-pointer transition-all duration-200 hover:shadow-md group relative min-h-[200px]"
+                          className="bg-[#131d35] border border-slate-800 hover:border-slate-700 rounded-2xl p-5 flex flex-col justify-between cursor-pointer transition-all duration-200 hover:shadow-xl group relative min-h-[210px]"
                         >
                           {/* Cabecera de la tarjeta */}
                           <div>
-                            <div className="flex items-start justify-between gap-2 mb-1.5">
+                            <div className="flex items-start justify-between gap-2 mb-2">
                               <span
                                 className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${etapaInfo.bg}`}
                               >
@@ -465,43 +476,43 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                   e.stopPropagation();
                                   setProyectoAEliminar(proyecto);
                                 }}
-                                className="text-slate-300 hover:text-red-500 text-xs p-1 rounded transition opacity-0 group-hover:opacity-100"
+                                className="text-slate-500 hover:text-red-400 text-xs p-1 rounded-lg transition opacity-0 group-hover:opacity-100"
                               >
-                                🗑️
+                                <TrashIcon className="w-3.5 h-3.5" />
                               </button>
                             </div>
 
                             {/* Chip de IA utilizada para la asistencia */}
                             <div className="mb-2">
                               <span
-                                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${modeloInfo.colorBg} inline-flex items-center gap-1`}
-                                title={`Asistencia técnica provista por ${modeloInfo.nombre} (${modeloInfo.proveedor})`}
+                                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${modeloInfo.colorBg} inline-flex items-center gap-1.5`}
+                                title={`Asistencia provista por ${modeloInfo.nombre} (${modeloInfo.proveedor})`}
                               >
-                                <span>{modeloInfo.icono}</span>
+                                <span className="font-mono text-[9px] uppercase tracking-wider">{modeloInfo.icono}</span>
                                 <span>{modeloInfo.nombre}</span>
                               </span>
                             </div>
 
-                            <h3 className="font-bold text-sm text-slate-800 group-hover:text-blue-600 transition-colors line-clamp-2">
+                            <h3 className="font-bold text-sm text-white group-hover:text-sky-400 transition-colors line-clamp-2">
                               {proyecto.nombre}
                             </h3>
 
                             {proyecto.descripcion && (
-                              <p className="text-[11px] text-slate-500 mt-1 line-clamp-2">
+                              <p className="text-[11px] text-slate-400 mt-1 line-clamp-2">
                                 {proyecto.descripcion}
                               </p>
                             )}
                           </div>
 
                           {/* Progreso y Footer */}
-                          <div className="mt-4 pt-3 border-t border-slate-100 space-y-2.5">
+                          <div className="mt-4 pt-3 border-t border-slate-800 space-y-2.5">
                             {/* Barra de progreso */}
                             <div className="space-y-1">
                               <div className="flex justify-between text-[10px] text-slate-400 font-medium">
-                                <span>Avance del flujo</span>
-                                <span className="font-bold text-slate-600">{etapaInfo.porcentaje}%</span>
+                                <span>Avance</span>
+                                <span className="font-bold text-slate-300">{etapaInfo.porcentaje}%</span>
                               </div>
-                              <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                              <div className="w-full bg-[#0f172a] h-1.5 rounded-full overflow-hidden">
                                 <div
                                   className={`h-full ${etapaInfo.barColor} transition-all duration-300`}
                                   style={{ width: `${etapaInfo.porcentaje}%` }}
@@ -510,19 +521,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             </div>
 
                             {/* Conteo de artefactos */}
-                            <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1">
+                            <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1">
                               <div className="flex items-center gap-1.5 font-medium">
-                                <span className="bg-blue-50 text-blue-700 px-1.5 py-0.2 rounded border border-blue-100 font-bold">
+                                <span className="bg-blue-500/10 text-sky-400 px-1.5 py-0.5 rounded border border-blue-500/20 font-bold">
                                   {proyecto.total_requisitos || 0} RU
                                 </span>
-                                <span className="bg-purple-50 text-purple-700 px-1.5 py-0.2 rounded border border-purple-100 font-bold">
+                                <span className="bg-purple-500/10 text-purple-300 px-1.5 py-0.5 rounded border border-purple-500/20 font-bold">
                                   {proyecto.total_historias || 0} HU
                                 </span>
-                                <span className="bg-indigo-50 text-indigo-700 px-1.5 py-0.2 rounded border border-indigo-100 font-bold">
+                                <span className="bg-teal-500/10 text-teal-300 px-1.5 py-0.5 rounded border border-teal-500/20 font-bold">
                                   {proyecto.total_tareas || 0} TSK
                                 </span>
                               </div>
-                              <span className="text-[10px] text-slate-400">{fechaFormateada}</span>
+                              <span className="text-[10px] text-slate-500">{fechaFormateada}</span>
                             </div>
                           </div>
                         </div>
@@ -531,7 +542,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                     {/* Si la búsqueda no arroja resultados */}
                     {proyectosFiltrados.length === 0 && busqueda && (
-                      <div className="col-span-full py-8 text-center text-xs text-slate-400">
+                      <div className="col-span-full py-8 text-center text-xs text-slate-500">
                         No se encontraron proyectos con el nombre "{busqueda}".
                       </div>
                     )}
@@ -545,13 +556,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div className="space-y-4">
                 
                 {/* Banner Explicativo */}
-                <div className="bg-gradient-to-r from-indigo-50/80 via-blue-50/60 to-white border border-indigo-200/80 rounded-2xl p-4 sm:p-5 flex items-start gap-3.5 shadow-2xs">
-                  <span className="text-2xl mt-0.5">📊</span>
+                <div className="bg-[#131d35] border border-slate-800 rounded-2xl p-5 flex items-start gap-3.5 shadow-xl">
+                  <div className="p-2 rounded-xl bg-blue-500/15 text-sky-400 shrink-0">
+                    <ChartIcon className="w-5 h-5" />
+                  </div>
                   <div className="space-y-1">
-                    <h2 className="text-sm font-bold text-indigo-950">
+                    <h2 className="text-sm font-bold text-white">
                       Módulo de Plan de Trabajo & Carta Gantt
                     </h2>
-                    <p className="text-xs text-slate-600 leading-relaxed">
+                    <p className="text-xs text-slate-300 leading-relaxed">
                       En este apartado se agrupan exclusivamente los proyectos que han finalizado sus 4 etapas de especificación. Cuentan con un backlog técnico consolidado y están en condiciones de generar cronogramas y exportar a Excel.
                     </p>
                   </div>
@@ -559,15 +572,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                 {/* Caso 1: Ningún proyecto ha alcanzado la Etapa 4 */}
                 {proyectosTerminados.length === 0 && (
-                  <div className="bg-white border border-dashed border-slate-300 rounded-2xl p-12 text-center shadow-xs space-y-4">
-                    <div className="w-16 h-16 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-3xl mx-auto shadow-inner">
-                      🎯
+                  <div className="bg-[#131d35] border border-dashed border-slate-700 rounded-3xl p-12 text-center shadow-xl space-y-4">
+                    <div className="w-16 h-16 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-sky-400 flex items-center justify-center mx-auto">
+                      <GanttIcon className="w-8 h-8" />
                     </div>
                     <div className="max-w-md mx-auto">
-                      <h3 className="text-base font-bold text-slate-800">
+                      <h3 className="text-base font-bold text-white">
                         Aún no tienes proyectos listos para Plan de Trabajo
                       </h3>
-                      <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                      <p className="text-xs text-slate-400 mt-1 leading-relaxed">
                         Para habilitar la generación de la Carta Gantt, el proyecto debe completar las 4 etapas: Ingesta ➔ Requisitos de Usuario ➔ Historias de Usuario ➔ Tareas Técnicas.
                       </p>
                     </div>
@@ -575,9 +588,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <button
                         type="button"
                         onClick={() => setTabActiva("proyectos")}
-                        className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-xs transition inline-flex items-center gap-2"
+                        className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl shadow-lg transition inline-flex items-center gap-2"
                       >
-                        <span>📁 Ir a Mis Proyectos</span>
+                        <FolderIcon className="w-4 h-4" />
+                        <span>Ir a Mis Proyectos</span>
                       </button>
                     </div>
                   </div>
@@ -599,39 +613,40 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       return (
                         <div
                           key={proyecto.id}
-                          className="bg-white border border-slate-200 hover:border-indigo-300 rounded-2xl p-5 sm:p-6 shadow-xs hover:shadow-md transition-all duration-200 space-y-4"
+                          className="bg-[#131d35] border border-slate-800 hover:border-slate-700 rounded-2xl p-5 sm:p-6 shadow-xl transition-all duration-200 space-y-4"
                         >
                           {/* Fila 1: Cabecera con Badges y Horas Totales */}
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1.5 shadow-2xs">
-                                <span>✨</span>
+                              <span className="text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full bg-teal-500/15 text-teal-300 border border-teal-500/30 flex items-center gap-1.5">
+                                <CheckIcon className="w-3.5 h-3.5 text-teal-400" />
                                 <span>4 ETAPAS COMPLETADAS • LISTO PARA PLAN DE TRABAJO</span>
                               </span>
                               <span
-                                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${modeloInfo.colorBg} inline-flex items-center gap-1`}
+                                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${modeloInfo.colorBg} inline-flex items-center gap-1.5`}
                               >
-                                <span>{modeloInfo.icono}</span>
+                                <span className="font-mono text-[9px] uppercase tracking-wider">{modeloInfo.icono}</span>
                                 <span>{modeloInfo.nombre}</span>
                               </span>
                             </div>
 
                             <div className="flex items-center gap-3">
-                              <div className="px-3.5 py-1 bg-indigo-50 border border-indigo-200 rounded-xl text-right">
-                                <span className="text-[9px] font-extrabold text-indigo-600 uppercase tracking-wider block">
+                              <div className="px-3.5 py-1.5 bg-[#0f172a] border border-slate-800 rounded-xl text-right">
+                                <span className="text-[9px] font-extrabold text-sky-400 uppercase tracking-wider block">
                                   Estimación Backlog
                                 </span>
-                                <span className="text-sm font-black text-indigo-900 block leading-tight">
-                                  ⏱️ {proyecto.total_horas || 0} hrs
+                                <span className="text-sm font-black text-white flex items-center justify-end gap-1.5 leading-tight">
+                                  <ClockIcon className="w-3.5 h-3.5 text-sky-400" />
+                                  <span>{proyecto.total_horas || 0} hrs</span>
                                 </span>
                               </div>
                               <button
                                 type="button"
                                 title="Eliminar proyecto"
                                 onClick={() => setProyectoAEliminar(proyecto)}
-                                className="text-slate-300 hover:text-red-500 text-xs p-1.5 rounded-lg hover:bg-slate-50 transition"
+                                className="text-slate-500 hover:text-red-400 text-xs p-1.5 rounded-lg hover:bg-slate-800 transition"
                               >
-                                🗑️
+                                <TrashIcon className="w-4 h-4" />
                               </button>
                             </div>
                           </div>
@@ -640,48 +655,50 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           <div>
                             <h3
                               onClick={() => onAbrirProyecto(proyecto.id)}
-                              className="font-black text-lg text-slate-900 hover:text-indigo-600 transition cursor-pointer tracking-tight"
+                              className="font-black text-lg text-white hover:text-sky-400 transition cursor-pointer tracking-tight"
                             >
                               {proyecto.nombre}
                             </h3>
                             {proyecto.descripcion && (
-                              <p className="text-xs text-slate-600 mt-1 line-clamp-2 leading-relaxed">
+                              <p className="text-xs text-slate-300 mt-1 line-clamp-2 leading-relaxed">
                                 {proyecto.descripcion}
                               </p>
                             )}
-                            <span className="text-[11px] text-slate-400 mt-1 block">
+                            <span className="text-[11px] text-slate-500 mt-1 block">
                               Consolidado el {fechaFormateada}
                             </span>
                           </div>
 
                           {/* Fila 3: Recordatorio Notorio de que el proyecto está listo para generar plan de trabajo */}
-                          <div className="p-3.5 bg-gradient-to-r from-emerald-50/70 via-indigo-50/40 to-blue-50/30 border border-emerald-200/80 rounded-xl flex items-start gap-3">
-                            <span className="text-2xl mt-0.5">📌</span>
-                            <div className="text-xs text-slate-700 space-y-1">
-                              <span className="font-extrabold text-emerald-950 block">
-                                Recordatorio: Proyecto listo para generación de Carta Gantt
+                          <div className="p-4 bg-[#0f172a] border border-slate-800 rounded-xl flex items-start gap-3">
+                            <div className="p-1.5 rounded-lg bg-teal-500/10 text-teal-400 shrink-0 mt-0.5">
+                              <CheckIcon className="w-4 h-4" />
+                            </div>
+                            <div className="text-xs text-slate-300 space-y-1">
+                              <span className="font-extrabold text-white block">
+                                Proyecto preparado para calendarización y exportación
                               </span>
-                              <p className="text-[11px] text-slate-600 leading-relaxed">
-                                Este proyecto completó formalmente el ciclo de derivación. Cuenta con correspondencia estricta entre{" "}
-                                <strong className="text-blue-700 font-semibold">{proyecto.total_requisitos || 0} Requisitos</strong>,{" "}
-                                <strong className="text-purple-700 font-semibold">{proyecto.total_historias || 0} Historias</strong> y{" "}
-                                <strong className="text-emerald-700 font-semibold">{proyecto.total_tareas || 0} Tareas Técnicas</strong>{" "}
+                              <p className="text-[11px] text-slate-400 leading-relaxed">
+                                Este proyecto completó formalmente el ciclo de derivación con correspondencia estricta entre{" "}
+                                <strong className="text-sky-400 font-semibold">{proyecto.total_requisitos || 0} Requisitos</strong>,{" "}
+                                <strong className="text-purple-300 font-semibold">{proyecto.total_historias || 0} Historias</strong> y{" "}
+                                <strong className="text-teal-300 font-semibold">{proyecto.total_tareas || 0} Tareas Técnicas</strong>{" "}
                                 (acumulando <strong>{proyecto.total_horas || 0} horas estimadas</strong>).
                               </p>
                             </div>
                           </div>
 
                           {/* Fila 4: Footer con Conteo de Artefactos y Botones de Acción */}
-                          <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="pt-3 border-t border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                             {/* Desglose de artefactos */}
                             <div className="flex items-center gap-2">
-                              <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-lg border border-blue-200 text-xs font-bold">
+                              <span className="bg-blue-500/10 text-sky-400 px-2.5 py-0.5 rounded-lg border border-blue-500/20 text-xs font-bold">
                                 {proyecto.total_requisitos || 0} RU
                               </span>
-                              <span className="bg-purple-50 text-purple-700 px-2 py-0.5 rounded-lg border border-purple-200 text-xs font-bold">
+                              <span className="bg-purple-500/10 text-purple-300 px-2.5 py-0.5 rounded-lg border border-purple-500/20 text-xs font-bold">
                                 {proyecto.total_historias || 0} HU
                               </span>
-                              <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-lg border border-emerald-200 text-xs font-bold">
+                              <span className="bg-teal-500/10 text-teal-300 px-2.5 py-0.5 rounded-lg border border-teal-500/20 text-xs font-bold">
                                 {proyecto.total_tareas || 0} TSK
                               </span>
                             </div>
@@ -692,9 +709,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                               <button
                                 type="button"
                                 onClick={() => setProyectoParaArbol(proyecto)}
-                                className="px-3.5 py-2 rounded-xl border border-indigo-200 hover:border-indigo-400 bg-white hover:bg-indigo-50/60 text-indigo-700 text-xs font-bold transition flex items-center gap-1.5 shadow-2xs"
+                                className="px-3.5 py-2 rounded-xl border border-slate-700 hover:border-slate-600 bg-slate-800 text-slate-200 hover:text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
                               >
-                                <span>🌳</span>
+                                <TreeIcon className="w-3.5 h-3.5 text-sky-400" />
                                 <span>Ver Árbol de Trazabilidad</span>
                               </button>
 
@@ -702,9 +719,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                               <button
                                 type="button"
                                 onClick={() => setProyectoParaGantt(proyecto)}
-                                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
+                                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-lg shadow-blue-600/20"
                               >
-                                <span>📅</span>
+                                <CalendarIcon className="w-3.5 h-3.5" />
                                 <span>Generar Plan de Trabajo (Gantt)</span>
                               </button>
 
@@ -712,7 +729,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                               <button
                                 type="button"
                                 onClick={() => onAbrirProyecto(proyecto.id)}
-                                className="px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-medium transition"
+                                className="px-3 py-2 rounded-xl border border-slate-700 hover:bg-slate-800 text-slate-300 text-xs font-medium transition"
                                 title="Abrir y editar en el espacio de trabajo"
                               >
                                 Editar
@@ -729,26 +746,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           {/* Columna Derecha: Sidebar Permanente */}
-          <aside className="lg:col-span-4 space-y-5 lg:sticky lg:top-24">
-            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-6">
+          <aside className="lg:col-span-4 space-y-5 lg:sticky lg:top-28">
+            <div className="bg-[#131d35] border border-slate-800 rounded-3xl p-6 shadow-xl space-y-6">
               
-              {/* Tarjeta de Proyectos Completados (Requerimiento explícito) */}
+              {/* Tarjeta de Proyectos Completados */}
               <div
                 onClick={() => setTabActiva("plan_trabajo")}
-                className="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-xl p-5 shadow-xs relative overflow-hidden cursor-pointer hover:ring-2 hover:ring-indigo-400 transition"
+                className="bg-[#0f172a] border border-slate-800 hover:border-slate-700 text-white rounded-2xl p-5 shadow-lg relative overflow-hidden cursor-pointer transition"
                 title="Hacer clic para ver el apartado de Plan de Trabajo"
               >
                 <div className="relative z-10 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-300 block">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-sky-400 block">
                       Resumen de Rendimiento
                     </span>
-                    <span className="text-[10px] text-indigo-300 font-semibold hover:underline">
+                    <span className="text-[10px] text-teal-400 font-semibold hover:underline flex items-center gap-1">
                       Ver planes →
                     </span>
                   </div>
                   <div className="flex items-baseline justify-between">
-                    <h3 className="text-xs font-bold uppercase text-slate-200 tracking-wider">
+                    <h3 className="text-xs font-bold uppercase text-slate-300 tracking-wider">
                       PROYECTOS COMPLETADOS:
                     </h3>
                     <span className="text-2xl font-black text-white">
@@ -757,44 +774,44 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </div>
 
                   {/* Barra de progreso */}
-                  <div className="w-full bg-slate-700/80 h-2 rounded-full overflow-hidden mt-1">
+                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden mt-1">
                     <div
-                      className="bg-blue-400 h-full rounded-full transition-all duration-500"
+                      className="bg-blue-500 h-full rounded-full transition-all duration-500"
                       style={{ width: `${porcentajeCompletitud}%` }}
                     ></div>
                   </div>
-                  <span className="text-[10px] text-slate-300 block text-right font-medium">
+                  <span className="text-[10px] text-slate-400 block text-right font-medium">
                     {porcentajeCompletitud}% con backlog de tareas consolidado
                   </span>
                 </div>
               </div>
 
-              {/* Tarjeta de Modelo de IA Preferido (Requerimiento explícito) */}
-              <div className="bg-slate-50/80 border border-slate-200 rounded-xl p-4 space-y-2">
+              {/* Tarjeta de Modelo de IA Preferido */}
+              <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-4 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
                     Modelo Preferido del Usuario
                   </span>
                   {modeloPreferidoInfo.esRecomendado ? (
-                    <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded-full bg-blue-100 text-blue-700 border border-blue-200">
+                    <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded-full bg-blue-500/20 text-sky-400 border border-blue-500/40">
                       Recomendado
                     </span>
                   ) : (
-                    <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                    <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
                       Experimental
                     </span>
                   )}
                 </div>
 
                 <div className="flex items-center gap-3 pt-1">
-                  <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 shadow-2xs flex items-center justify-center text-xl shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-[#131d35] border border-slate-700 shadow-sm flex items-center justify-center font-mono font-bold text-xs text-sky-400 shrink-0">
                     {modeloPreferidoInfo.icono}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <span className="font-bold text-xs text-slate-900 block truncate">
+                    <span className="font-bold text-xs text-white block truncate">
                       {modeloPreferidoInfo.nombre}
                     </span>
-                    <span className="text-[11px] text-slate-500 block">
+                    <span className="text-[11px] text-slate-400 block">
                       {totalProyectos > 0
                         ? `${maxUsos} de ${totalProyectos} proyectos (${porcentajeUsoModelo}%)`
                         : "Predeterminado (Recomendado)"}
@@ -805,36 +822,37 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
               {/* Desglose de Proyectos por Etapa */}
               <div className="space-y-3">
-                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
                   Distribución por Etapas
                 </h4>
                 <div className="space-y-2 text-xs">
-                  <div className="flex items-center justify-between p-2 rounded-lg bg-blue-50/60 border border-blue-100">
-                    <span className="font-semibold text-blue-900">Etapa 1: Ingesta de Documento</span>
-                    <span className="font-bold text-blue-700 bg-white px-2 py-0.5 rounded border border-blue-200 text-xs">
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#0f172a] border border-slate-800">
+                    <span className="font-semibold text-slate-300">Etapa 1: Ingesta de Documento</span>
+                    <span className="font-bold text-sky-400 bg-[#131d35] px-2 py-0.5 rounded border border-slate-700 text-xs">
                       {enEtapa1}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between p-2 rounded-lg bg-sky-50/60 border border-sky-100">
-                    <span className="font-semibold text-sky-900">Etapa 2: Requisitos de Usuario (RU)</span>
-                    <span className="font-bold text-sky-700 bg-white px-2 py-0.5 rounded border border-sky-200 text-xs">
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#0f172a] border border-slate-800">
+                    <span className="font-semibold text-slate-300">Etapa 2: Requisitos de Usuario (RU)</span>
+                    <span className="font-bold text-sky-400 bg-[#131d35] px-2 py-0.5 rounded border border-slate-700 text-xs">
                       {enEtapa2}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between p-2 rounded-lg bg-purple-50/60 border border-purple-100">
-                    <span className="font-semibold text-purple-900">Etapa 3: Historias de Usuario (HU)</span>
-                    <span className="font-bold text-purple-700 bg-white px-2 py-0.5 rounded border border-purple-200 text-xs">
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#0f172a] border border-slate-800">
+                    <span className="font-semibold text-slate-300">Etapa 3: Historias de Usuario (HU)</span>
+                    <span className="font-bold text-purple-300 bg-[#131d35] px-2 py-0.5 rounded border border-slate-700 text-xs">
                       {enEtapa3}
                     </span>
                   </div>
                   <div
                     onClick={() => setTabActiva("plan_trabajo")}
-                    className="flex items-center justify-between p-2 rounded-lg bg-emerald-50/80 border border-emerald-200 cursor-pointer hover:bg-emerald-100/70 transition"
+                    className="flex items-center justify-between p-2.5 rounded-xl bg-[#0f172a] border border-slate-800 cursor-pointer hover:border-slate-700 transition"
                   >
-                    <span className="font-semibold text-emerald-950 flex items-center gap-1">
-                      <span>✓</span> Etapa 4: Tareas (Completado)
+                    <span className="font-semibold text-teal-300 flex items-center gap-1.5">
+                      <CheckIcon className="w-3.5 h-3.5 text-teal-400" />
+                      <span>Etapa 4: Tareas (Completado)</span>
                     </span>
-                    <span className="font-extrabold text-emerald-800 bg-white px-2 py-0.5 rounded border border-emerald-300 text-xs shadow-2xs">
+                    <span className="font-extrabold text-teal-300 bg-[#131d35] px-2 py-0.5 rounded border border-teal-500/30 text-xs">
                       {enEtapa4}
                     </span>
                   </div>
@@ -842,47 +860,48 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
 
               {/* Métricas Globales de Artefactos de Trazabilidad */}
-              <div className="space-y-2 pt-2 border-t border-slate-100">
-                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+              <div className="space-y-2.5 pt-2 border-t border-slate-800">
+                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
                   Artefactos Acumulados
                 </h4>
                 <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                    <span className="text-base font-black text-blue-700 block">{totalRequisitos}</span>
-                    <span className="text-[10px] font-bold text-slate-500 uppercase">RUs</span>
+                  <div className="bg-[#0f172a] p-3 rounded-xl border border-slate-800">
+                    <span className="text-base font-black text-sky-400 block">{totalRequisitos}</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">RUs</span>
                   </div>
-                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                    <span className="text-base font-black text-purple-700 block">{totalHistorias}</span>
-                    <span className="text-[10px] font-bold text-slate-500 uppercase">HUs</span>
+                  <div className="bg-[#0f172a] p-3 rounded-xl border border-slate-800">
+                    <span className="text-base font-black text-purple-400 block">{totalHistorias}</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">HUs</span>
                   </div>
-                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                    <span className="text-base font-black text-emerald-700 block">{totalTareas}</span>
-                    <span className="text-[10px] font-bold text-slate-500 uppercase">Tareas</span>
+                  <div className="bg-[#0f172a] p-3 rounded-xl border border-slate-800">
+                    <span className="text-base font-black text-teal-400 block">{totalTareas}</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Tareas</span>
                   </div>
                 </div>
               </div>
 
               {/* Resumen Metodológico de la Tesis */}
-              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5 text-xs">
-                <span className="font-bold text-slate-800 block flex items-center gap-1.5">
-                  <span>💡</span> Trazabilidad Híbrida
+              <div className="p-4 bg-[#0f172a] rounded-2xl border border-slate-800 space-y-1.5 text-xs">
+                <span className="font-bold text-white block flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-[#d4f63b]"></span>
+                  <span>Trazabilidad Híbrida</span>
                 </span>
-                <p className="text-[11px] text-slate-600 leading-relaxed">
+                <p className="text-[11px] text-slate-400 leading-relaxed">
                   El sistema garantiza la correspondencia entre la especificación formal del cliente y la entrega ágil. Cada tarea técnica desglosada responde y enlaza de forma trazable a su Requisito de Usuario de origen.
                 </p>
               </div>
 
               {/* Perfil del Usuario y Accesos */}
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-full bg-blue-600 text-white font-bold text-xs flex items-center justify-center shrink-0">
+              <div className="p-3.5 bg-[#0f172a] rounded-2xl border border-slate-800 flex items-center justify-between">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-full bg-blue-600 text-white font-bold text-xs flex items-center justify-center shrink-0">
                     {(usuario?.apodo || usuario?.nombre || "AN").slice(0, 2).toUpperCase()}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <span className="font-bold text-xs text-slate-800 block truncate">
+                    <span className="font-bold text-xs text-white block truncate">
                       {usuario?.apodo ? `@${usuario.apodo}` : usuario?.nombre || "Analista"}
                     </span>
-                    <span className="text-[10px] text-slate-500 block truncate">
+                    <span className="text-[10px] text-slate-400 block truncate">
                       {usuario?.email}
                     </span>
                   </div>
@@ -890,7 +909,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setMostrarPerfilModal(true)}
-                  className="text-[11px] font-bold text-blue-600 hover:text-blue-800 hover:underline px-1.5 py-1"
+                  className="text-[11px] font-bold text-sky-400 hover:text-white hover:underline px-2 py-1"
                 >
                   Editar
                 </button>
@@ -899,9 +918,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               {/* Botón de acción rápida */}
               <button
                 onClick={onCrearNuevoProyecto}
-                className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-2 shadow-xs transition"
+                className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-blue-600/25 transition"
               >
-                <span>+ Iniciar Nuevo Proyecto</span>
+                <PlusIcon className="w-4 h-4" />
+                <span>Iniciar Nuevo Proyecto</span>
               </button>
             </div>
           </aside>

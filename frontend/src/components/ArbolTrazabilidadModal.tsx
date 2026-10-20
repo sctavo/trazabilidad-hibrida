@@ -1,5 +1,14 @@
 import React, { useEffect, useState } from "react";
 import type { RequisitoItem, HistoriaUsuarioItem, TareaItem } from "../types";
+import {
+  TreeIcon,
+  CloseIcon,
+  CopyIcon,
+  SearchIcon,
+  ClockIcon,
+  CalendarIcon,
+  CheckIcon,
+} from "./Icons";
 
 interface ArbolTrazabilidadModalProps {
   proyectoId: string;
@@ -93,7 +102,6 @@ export const ArbolTrazabilidadModal: React.FC<ArbolTrazabilidadModalProps> = ({
     setNodosExpandidos(new Set());
   };
 
-  // Normalizador de ID para coincidencias seguras (e.g. RU1 vs RU-01)
   const sonIdsCoincidentes = (idA?: string, idB?: string) => {
     if (!idA || !idB) return false;
     const limpioA = idA.trim().toLowerCase();
@@ -110,34 +118,27 @@ export const ArbolTrazabilidadModal: React.FC<ArbolTrazabilidadModalProps> = ({
 
   const totalHoras = tareas.reduce((acc, t) => acc + (t.estimacion_horas || 0), 0);
 
-  // Copiar estructura de árbol a portapapeles
   const handleCopiarEstructura = () => {
     if (!detalle) return;
 
-    let texto = `ÁRBOL DE TRAZABILIDAD - ${detalle.nombre}\n`;
+    let texto = `ARBOL DE TRAZABILIDAD - ${detalle.nombre}\n`;
     texto += `Total: ${requisitos.length} RUs | ${historias.length} HUs | ${tareas.length} Tareas | ${totalHoras} hrs\n`;
     texto += `=========================================================\n\n`;
 
     requisitos.forEach((ru) => {
-      texto += `[${ru.id}] ${ru.nombre} (${ru.tipo} - ${ru.estabilidad})\n`;
-      const husHijas = historias.filter((h) => sonIdsCoincidentes(h.rf_origen, ru.id));
-      if (husHijas.length === 0) {
-        texto += `   └── (Sin historias asociadas)\n`;
+      texto += `[RU] ${ru.id}: ${ru.nombre} (${ru.tipo} - ${ru.estabilidad})\n`;
+      const hus = historias.filter((h) => sonIdsCoincidentes(h.rf_origen, ru.id));
+      if (hus.length === 0) {
+        texto += `   ↳ Sin historias derivadas\n`;
       } else {
-        husHijas.forEach((hu, idxHu) => {
-          const esUltimaHu = idxHu === husHijas.length - 1;
-          const prefijoHu = esUltimaHu ? "   └── " : "   ├── ";
-          const barraSub = esUltimaHu ? "       " : "   │   ";
-          texto += `${prefijoHu}[${hu.id}] ${hu.titulo}\n`;
-
-          const tsksHijas = tareas.filter((t) => sonIdsCoincidentes(t.hu_origen, hu.id));
-          if (tsksHijas.length === 0) {
-            texto += `${barraSub}└── (Sin tareas técnicas asociadas)\n`;
+        hus.forEach((hu) => {
+          texto += `   ↳ [HU] ${hu.id}: ${hu.titulo}\n`;
+          const tsks = tareas.filter((t) => sonIdsCoincidentes(t.hu_origen, hu.id));
+          if (tsks.length === 0) {
+            texto += `        ↳ Sin tareas tecnicas\n`;
           } else {
-            tsksHijas.forEach((t, idxTsk) => {
-              const esUltimaTsk = idxTsk === tsksHijas.length - 1;
-              const prefijoTsk = esUltimaTsk ? "└── " : "├── ";
-              texto += `${barraSub}${prefijoTsk}[${t.id}] ${t.titulo} (${t.tipo} - ${t.estimacion_horas}h)\n`;
+            tsks.forEach((tsk) => {
+              texto += `        ↳ [TSK] ${tsk.id}: ${tsk.titulo} (${tsk.tipo} - ${tsk.estimacion_horas}h)\n`;
             });
           }
         });
@@ -150,63 +151,63 @@ export const ArbolTrazabilidadModal: React.FC<ArbolTrazabilidadModalProps> = ({
     setTimeout(() => setCopiado(false), 2500);
   };
 
-  // Filtrado por búsqueda
   const coincideBusqueda = (texto: string) => {
     if (!busqueda.trim()) return true;
     return texto.toLowerCase().includes(busqueda.trim().toLowerCase());
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 sm:p-6 overflow-y-auto">
-      <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 sm:p-6 overflow-y-auto font-sans text-slate-100">
+      <div className="bg-[#131d35] border border-slate-700/80 rounded-2xl w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         
         {/* Cabecera del Modal */}
-        <div className="p-5 sm:p-6 border-b border-slate-200 bg-slate-50/70 flex items-start justify-between gap-4">
+        <div className="p-5 sm:p-6 border-b border-slate-800 bg-[#0f172a]/60 flex items-start justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="text-xl">🌳</span>
-              <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 border border-indigo-200">
-                Trazabilidad Jerárquica Híbrida
+              <TreeIcon className="w-5 h-5 text-indigo-400" />
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-950/80 text-indigo-300 border border-indigo-800/80">
+                Trazabilidad Jerárquica
               </span>
             </div>
-            <h2 className="text-xl font-black text-slate-900 tracking-tight">
+            <h2 className="text-xl font-bold text-white tracking-tight">
               {nombreProyecto}
             </h2>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-400">
               Correspondencia directa:{" "}
-              <strong className="text-blue-700 font-semibold">Requisitos de Usuario (RU)</strong>{" "}
-              ➔{" "}
-              <strong className="text-purple-700 font-semibold">Historias de Usuario (HU)</strong>{" "}
-              ➔{" "}
-              <strong className="text-emerald-700 font-semibold">Tareas Técnicas (TSK)</strong>
+              <strong className="text-sky-400 font-semibold">Requisitos de Usuario (RU)</strong>{" "}
+              →{" "}
+              <strong className="text-purple-400 font-semibold">Historias de Usuario (HU)</strong>{" "}
+              →{" "}
+              <strong className="text-teal-300 font-semibold">Tareas Técnicas (TSK)</strong>
             </p>
           </div>
 
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 p-2 rounded-xl hover:bg-slate-200/60 text-lg transition"
+            className="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-slate-800 text-lg transition"
             title="Cerrar modal"
           >
-            ✕
+            <CloseIcon className="w-4 h-4" />
           </button>
         </div>
 
         {/* Barra de Estadísticas y Controles */}
-        <div className="px-5 sm:px-6 py-3 bg-white border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="px-5 sm:px-6 py-3 bg-[#0f172a]/40 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
           {/* Métricas del Árbol */}
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-            <span className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 font-bold">
-              📋 {requisitos.length} RUs
+            <span className="px-2.5 py-1 rounded-lg bg-blue-950/60 text-sky-400 border border-blue-800/70 font-bold">
+              {requisitos.length} RUs
             </span>
-            <span className="px-2.5 py-1 rounded-lg bg-purple-50 text-purple-700 border border-purple-200 font-bold">
-              📖 {historias.length} HUs
+            <span className="px-2.5 py-1 rounded-lg bg-purple-950/60 text-purple-300 border border-purple-800/70 font-bold">
+              {historias.length} HUs
             </span>
-            <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold">
-              🛠️ {tareas.length} Tareas
+            <span className="px-2.5 py-1 rounded-lg bg-emerald-950/60 text-emerald-300 border border-emerald-800/70 font-bold">
+              {tareas.length} Tareas
             </span>
-            <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 border border-slate-200 font-extrabold">
-              ⏱️ {totalHoras} hrs estimadas
+            <span className="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-200 border border-slate-700 font-semibold flex items-center gap-1.5">
+              <ClockIcon className="w-3.5 h-3.5 text-slate-400" />
+              <span>{totalHoras} hrs estimadas</span>
             </span>
           </div>
 
@@ -215,14 +216,14 @@ export const ArbolTrazabilidadModal: React.FC<ArbolTrazabilidadModalProps> = ({
             <button
               type="button"
               onClick={expandirTodo}
-              className="px-2.5 py-1 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold text-[11px] transition"
+              className="px-2.5 py-1 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white font-medium text-[11px] transition"
             >
               Expandir todo
             </button>
             <button
               type="button"
               onClick={colapsarTodo}
-              className="px-2.5 py-1 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold text-[11px] transition"
+              className="px-2.5 py-1 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white font-medium text-[11px] transition"
             >
               Colapsar todo
             </button>
@@ -230,27 +231,37 @@ export const ArbolTrazabilidadModal: React.FC<ArbolTrazabilidadModalProps> = ({
               type="button"
               onClick={handleCopiarEstructura}
               disabled={cargando || !!error}
-              className="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-900 text-white font-semibold text-[11px] transition flex items-center gap-1.5 shadow-xs"
+              className="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-medium text-[11px] border border-slate-700 transition flex items-center gap-1.5 shadow-xs"
             >
-              <span>{copiado ? "✓ Copiado" : "📋 Copiar Jerarquía"}</span>
+              {copiado ? (
+                <>
+                  <CheckIcon className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Copiado</span>
+                </>
+              ) : (
+                <>
+                  <CopyIcon className="w-3.5 h-3.5" />
+                  <span>Copiar Jerarquía</span>
+                </>
+              )}
             </button>
           </div>
         </div>
 
         {/* Buscador interactivo */}
-        <div className="px-5 sm:px-6 py-2.5 bg-slate-50/50 border-b border-slate-100 flex items-center gap-2">
-          <span className="text-slate-400 text-xs">🔍</span>
+        <div className="px-5 sm:px-6 py-2.5 bg-[#0f172a]/70 border-b border-slate-800 flex items-center gap-2">
+          <SearchIcon className="w-4 h-4 text-slate-500" />
           <input
             type="text"
             placeholder="Filtrar por código (RU1, HU-01, TSK-01) o palabras clave en artefactos..."
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            className="w-full text-xs bg-transparent border-none focus:outline-none text-slate-800 placeholder-slate-400"
+            className="w-full text-xs bg-transparent border-none focus:outline-none text-slate-200 placeholder-slate-500"
           />
           {busqueda && (
             <button
               onClick={() => setBusqueda("")}
-              className="text-[10px] text-slate-400 hover:text-slate-600 px-1 font-bold"
+              className="text-[10px] text-slate-400 hover:text-white px-1 font-bold"
             >
               Limpiar
             </button>
@@ -258,25 +269,25 @@ export const ArbolTrazabilidadModal: React.FC<ArbolTrazabilidadModalProps> = ({
         </div>
 
         {/* Contenido Scrollable con el Árbol Jerárquico */}
-        <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4 bg-slate-50/30">
+        <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4 bg-[#0f172a]/30">
           {cargando && (
             <div className="py-20 text-center">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mx-auto mb-3"></div>
-              <p className="text-xs font-semibold text-slate-600">
-                Cargando relaciones de trazabilidad desde la base de datos...
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500 mx-auto mb-3"></div>
+              <p className="text-xs font-semibold text-slate-400">
+                Cargando relaciones de trazabilidad desde PostgreSQL...
               </p>
             </div>
           )}
 
           {error && !cargando && (
-            <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs text-center">
+            <div className="p-4 rounded-xl bg-red-950/50 border border-red-800 text-red-300 text-xs text-center">
               <p className="font-bold mb-1">Error al cargar artefactos</p>
               <p>{error}</p>
             </div>
           )}
 
           {!cargando && !error && requisitos.length === 0 && (
-            <div className="py-16 text-center text-slate-400 text-xs">
+            <div className="py-16 text-center text-slate-500 text-xs">
               Este proyecto no posee Requisitos de Usuario registrados.
             </div>
           )}
@@ -287,10 +298,8 @@ export const ArbolTrazabilidadModal: React.FC<ArbolTrazabilidadModalProps> = ({
                 const ruKey = `RU-${ru.id}`;
                 const expandidoRU = nodosExpandidos.has(ruKey);
 
-                // Encontrar las HUs hijas
                 const husHijas = historias.filter((h) => sonIdsCoincidentes(h.rf_origen, ru.id));
 
-                // Filtrar según búsqueda
                 const ruCoincide =
                   coincideBusqueda(ru.id) ||
                   coincideBusqueda(ru.nombre) ||
@@ -320,46 +329,46 @@ export const ArbolTrazabilidadModal: React.FC<ArbolTrazabilidadModalProps> = ({
                 return (
                   <div
                     key={ru.id}
-                    className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden transition-all duration-150 hover:border-blue-300"
+                    className="bg-[#131d35] border border-slate-800 rounded-xl shadow-md overflow-hidden transition hover:border-slate-700"
                   >
                     {/* NIVEL 1: Requisito de Usuario (RU) */}
                     <div
                       onClick={() => toggleNodo(ruKey)}
-                      className="p-3.5 sm:p-4 bg-gradient-to-r from-blue-50/60 to-white flex items-start justify-between gap-3 cursor-pointer select-none"
+                      className="p-3.5 sm:p-4 bg-gradient-to-r from-blue-950/40 via-[#131d35] to-[#131d35] flex items-start justify-between gap-3 cursor-pointer select-none"
                     >
                       <div className="flex items-start gap-2.5 min-w-0">
                         <button
                           type="button"
-                          className="text-slate-400 hover:text-slate-700 text-xs mt-0.5 transition font-bold"
+                          className="text-slate-400 hover:text-white text-xs mt-0.5 transition font-bold"
                         >
                           {expandidoRU ? "▼" : "▶"}
                         </button>
 
                         <div className="space-y-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-extrabold text-xs px-2 py-0.5 rounded-md bg-blue-600 text-white tracking-wide shadow-2xs">
+                            <span className="font-mono font-bold text-xs px-2 py-0.5 rounded bg-blue-600 text-white">
                               {ru.id}
                             </span>
-                            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 border border-blue-200">
+                            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-blue-950/80 text-sky-300 border border-blue-800/80">
                               {ru.tipo}
                             </span>
                             <span
-                              className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md border ${
+                              className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${
                                 ru.estabilidad === "Intransable"
-                                  ? "bg-red-50 text-red-700 border-red-200"
-                                  : "bg-amber-50 text-amber-700 border-amber-200"
+                                  ? "bg-red-950/60 text-red-300 border-red-800/70"
+                                  : "bg-amber-950/60 text-amber-300 border-amber-800/70"
                               }`}
                             >
                               {ru.estabilidad}
                             </span>
                           </div>
 
-                          <h3 className="font-bold text-sm text-slate-900 leading-snug">
+                          <h3 className="font-bold text-sm text-white leading-snug">
                             {ru.nombre}
                           </h3>
 
                           {ru.descripcion && (
-                            <p className="text-xs text-slate-600 leading-relaxed line-clamp-2">
+                            <p className="text-xs text-slate-300 leading-relaxed line-clamp-2">
                               {ru.descripcion}
                             </p>
                           )}
@@ -367,7 +376,7 @@ export const ArbolTrazabilidadModal: React.FC<ArbolTrazabilidadModalProps> = ({
                       </div>
 
                       <div className="text-right shrink-0">
-                        <span className="text-[11px] font-bold text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded-full border border-blue-200">
+                        <span className="text-[11px] font-semibold text-sky-300 bg-blue-950/80 px-2 py-0.5 rounded-full border border-blue-800/80">
                           {husHijas.length} {husHijas.length === 1 ? "HU hija" : "HUs hijas"}
                         </span>
                       </div>
@@ -375,9 +384,9 @@ export const ArbolTrazabilidadModal: React.FC<ArbolTrazabilidadModalProps> = ({
 
                     {/* NIVEL 2: Historias de Usuario (HUs) Hijas */}
                     {expandidoRU && (
-                      <div className="p-3 sm:p-4 border-t border-slate-100 bg-slate-50/40 pl-6 sm:pl-10 space-y-3">
+                      <div className="p-3 sm:p-4 border-t border-slate-800 bg-[#0f172a]/50 pl-6 sm:pl-10 space-y-3">
                         {husHijas.length === 0 ? (
-                          <div className="text-xs text-slate-400 italic py-2 pl-2">
+                          <div className="text-xs text-slate-500 italic py-2 pl-2">
                             ↳ No hay historias de usuario derivadas para este requisito.
                           </div>
                         ) : (
@@ -395,7 +404,7 @@ export const ArbolTrazabilidadModal: React.FC<ArbolTrazabilidadModalProps> = ({
                             return (
                               <div
                                 key={hu.id}
-                                className="bg-white border border-purple-200/80 rounded-xl p-3.5 shadow-2xs space-y-2 hover:border-purple-300 transition"
+                                className="bg-[#131d35] border border-purple-900/60 rounded-xl p-3.5 space-y-2 hover:border-purple-700/80 transition"
                               >
                                 {/* Cabecera de la HU */}
                                 <div
@@ -405,43 +414,43 @@ export const ArbolTrazabilidadModal: React.FC<ArbolTrazabilidadModalProps> = ({
                                   <div className="flex items-start gap-2 min-w-0">
                                     <button
                                       type="button"
-                                      className="text-purple-400 hover:text-purple-700 text-xs mt-0.5 font-bold"
+                                      className="text-purple-400 hover:text-purple-300 text-xs mt-0.5 font-bold"
                                     >
                                       {expandidoHU ? "▼" : "▶"}
                                     </button>
 
                                     <div className="space-y-1 min-w-0">
                                       <div className="flex items-center gap-2 flex-wrap">
-                                        <span className="font-extrabold text-[11px] px-2 py-0.5 rounded-md bg-purple-700 text-white">
+                                        <span className="font-mono font-bold text-[11px] px-2 py-0.5 rounded bg-purple-700 text-white">
                                           {hu.id}
                                         </span>
-                                        <span className="text-[10px] font-semibold text-purple-600 bg-purple-50 px-2 py-0.5 rounded border border-purple-100">
+                                        <span className="text-[10px] font-semibold text-purple-300 bg-purple-950/80 px-2 py-0.5 rounded border border-purple-800/80">
                                           Origen: {hu.rf_origen}
                                         </span>
                                       </div>
 
-                                      <h4 className="font-bold text-xs text-slate-800">
+                                      <h4 className="font-bold text-xs text-slate-100">
                                         {hu.titulo}
                                       </h4>
 
-                                      <p className="text-[11px] text-slate-600 leading-relaxed bg-slate-50 p-2 rounded-lg border border-slate-100">
-                                        <span className="font-semibold text-purple-700">Como</span>{" "}
+                                      <p className="text-[11px] text-slate-300 leading-relaxed bg-[#0f172a] p-2.5 rounded-lg border border-slate-800">
+                                        <span className="font-semibold text-purple-400">Como</span>{" "}
                                         {hu.rol},{" "}
-                                        <span className="font-semibold text-purple-700">quiero</span>{" "}
+                                        <span className="font-semibold text-purple-400">quiero</span>{" "}
                                         {hu.quiero},{" "}
-                                        <span className="font-semibold text-purple-700">para</span>{" "}
+                                        <span className="font-semibold text-purple-400">para</span>{" "}
                                         {hu.para}.
                                       </p>
                                     </div>
                                   </div>
 
                                   <div className="text-right shrink-0 space-y-1">
-                                    <span className="text-[10px] font-bold text-purple-700 bg-purple-100/70 px-2 py-0.5 rounded-full border border-purple-200 block">
+                                    <span className="text-[10px] font-semibold text-purple-300 bg-purple-950/80 px-2 py-0.5 rounded-full border border-purple-800/80 block">
                                       {tsksHijas.length}{" "}
                                       {tsksHijas.length === 1 ? "tarea" : "tareas"}
                                     </span>
                                     {totalHorasHu > 0 && (
-                                      <span className="text-[10px] font-semibold text-slate-500 block">
+                                      <span className="text-[10px] font-medium text-slate-400 block">
                                         {totalHorasHu} hrs
                                       </span>
                                     )}
@@ -450,9 +459,9 @@ export const ArbolTrazabilidadModal: React.FC<ArbolTrazabilidadModalProps> = ({
 
                                 {/* NIVEL 3: Tareas Técnicas (TSK) Nietas */}
                                 {expandidoHU && (
-                                  <div className="pt-2 pl-4 sm:pl-6 border-t border-purple-50 space-y-2">
+                                  <div className="pt-2 pl-4 sm:pl-6 border-t border-slate-800 space-y-2">
                                     {tsksHijas.length === 0 ? (
-                                      <div className="text-[11px] text-slate-400 italic py-1">
+                                      <div className="text-[11px] text-slate-500 italic py-1">
                                         ↳ Sin tareas técnicas desglosadas para esta HU.
                                       </div>
                                     ) : (
@@ -460,24 +469,25 @@ export const ArbolTrazabilidadModal: React.FC<ArbolTrazabilidadModalProps> = ({
                                         {tsksHijas.map((tsk) => (
                                           <div
                                             key={tsk.id}
-                                            className="p-2.5 rounded-lg border border-emerald-200 bg-emerald-50/30 space-y-1 hover:bg-emerald-50/60 transition"
+                                            className="p-2.5 rounded-lg border border-slate-800 bg-[#0f172a] space-y-1 hover:border-slate-700 transition"
                                           >
                                             <div className="flex items-center justify-between gap-1">
-                                              <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-emerald-700 text-white">
+                                              <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-700 text-white">
                                                 {tsk.id}
                                               </span>
-                                              <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200">
-                                                ⏱️ {tsk.estimacion_horas}h
+                                              <span className="text-[10px] font-semibold text-emerald-300 bg-emerald-950/80 px-1.5 py-0.5 rounded border border-emerald-800/80 flex items-center gap-1">
+                                                <ClockIcon className="w-3 h-3 text-emerald-400" />
+                                                <span>{tsk.estimacion_horas}h</span>
                                               </span>
                                             </div>
-                                            <span className="text-[10px] font-bold text-slate-500 uppercase block">
+                                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
                                               {tsk.tipo}
                                             </span>
-                                            <p className="text-xs font-semibold text-slate-800 leading-tight">
+                                            <p className="text-xs font-medium text-slate-200 leading-tight">
                                               {tsk.titulo}
                                             </p>
                                             {tsk.descripcion && (
-                                              <p className="text-[11px] text-slate-600 line-clamp-2">
+                                              <p className="text-[11px] text-slate-400 line-clamp-2">
                                                 {tsk.descripcion}
                                               </p>
                                             )}
@@ -501,16 +511,16 @@ export const ArbolTrazabilidadModal: React.FC<ArbolTrazabilidadModalProps> = ({
         </div>
 
         {/* Footer del Modal con botón a Plan de Trabajo */}
-        <div className="p-4 sm:p-5 border-t border-slate-200 bg-white flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="text-xs text-slate-500">
-            <span>Trazabilidad 100% verificada para auditoría de ingeniería de software.</span>
+        <div className="p-4 sm:p-5 border-t border-slate-800 bg-[#0f172a]/60 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="text-xs text-slate-400">
+            <span>Trazabilidad verificada para auditoría de ingeniería de software.</span>
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 border border-slate-200 rounded-xl transition"
+              className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-700 rounded-xl transition"
             >
               Cerrar
             </button>
@@ -521,9 +531,10 @@ export const ArbolTrazabilidadModal: React.FC<ArbolTrazabilidadModalProps> = ({
                   onClose();
                   onGenerarPlanTrabajo();
                 }}
-                className="px-5 py-2 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-xs transition flex items-center gap-1.5"
+                className="px-5 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-xs transition flex items-center gap-2"
               >
-                <span>📅 Generar Plan de Trabajo (Gantt)</span>
+                <CalendarIcon className="w-4 h-4" />
+                <span>Plan de Trabajo & Gantt</span>
                 <span>→</span>
               </button>
             )}
@@ -534,4 +545,3 @@ export const ArbolTrazabilidadModal: React.FC<ArbolTrazabilidadModalProps> = ({
     </div>
   );
 };
-

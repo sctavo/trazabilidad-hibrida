@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import type { HistoriaUsuarioItem, RequisitoItem } from "../types";
+import { TrashIcon, CheckIcon, CloseIcon } from "./Icons";
 
 interface HistoriasUsuarioViewProps {
   historiasIniciales: HistoriaUsuarioItem[];
@@ -54,7 +55,6 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
     }
   };
 
-  // --- Manejo granular de Criterios Manuales ---
   const handleEditarCriterioManual = (huIndex: number, criterioIndex: number, nuevoTexto: string) => {
     const actualizadas = [...historias];
     const hu = actualizadas[huIndex];
@@ -101,7 +101,7 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
 
     setHistorias(normalizadas);
     onHistoriasActualizadas(normalizadas);
-    onEliminarHistoriaCascade(hu.id); // Poda tareas en cascada
+    onEliminarHistoriaCascade(hu.id);
   };
 
   const handleRegenerarHUsPorRU = async (ruId: string) => {
@@ -263,21 +263,21 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
+      <div className="flex items-center justify-between bg-[#131d35] p-6 rounded-2xl border border-slate-800 shadow-xl">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700 bg-purple-50 px-2.5 py-0.5 rounded-full border border-purple-200">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400 bg-purple-500/15 px-2.5 py-0.5 rounded-full border border-purple-500/30">
               Etapa 3: Historias de Usuario
             </span>
-            <span className="text-xs text-slate-500 font-medium">{historias.length} historias</span>
+            <span className="text-xs text-slate-400 font-medium">{historias.length} historias</span>
           </div>
-          <h2 className="text-base font-bold text-slate-800 mt-1">
+          <h2 className="text-lg font-bold text-white mt-1">
             Auditoría y Validación Ágil 
           </h2>
         </div>
         <button
           onClick={onVolver}
-          className="text-xs font-semibold text-slate-600 hover:text-slate-900 px-3 py-1.5 rounded-lg border border-slate-300 transition"
+          className="text-xs font-semibold text-slate-300 hover:text-white px-3.5 py-1.5 rounded-xl border border-slate-700 hover:bg-slate-800 transition"
         >
           ← Volver a Requisitos
         </button>
@@ -289,38 +289,39 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
           const padreFueModificado = ruModificadosIds.has(hu.rf_origen);
           const padreFueSincronizado = ruSincronizadosIds.has(hu.rf_origen);
 
-          let estiloContenedor = "border-slate-200 hover:border-slate-300";
+          let estiloContenedor = "border-slate-800 hover:border-slate-700";
           if (padreFueModificado) {
-            estiloContenedor = "border-amber-400 bg-amber-50/15 ring-1 ring-amber-200";
+            estiloContenedor = "border-amber-500/70 bg-amber-500/10 ring-1 ring-amber-500/30";
           } else if (padreFueSincronizado) {
-            estiloContenedor = "border-emerald-500 bg-emerald-50/20 ring-1 ring-emerald-200";
+            estiloContenedor = "border-teal-500/70 bg-teal-500/10 ring-1 ring-teal-500/30";
           } else if (fueModificada) {
-            estiloContenedor = "border-purple-300 ring-1 ring-purple-100";
+            estiloContenedor = "border-purple-500/60 ring-1 ring-purple-500/30";
           }
 
           return (
             <div
               key={hu.id}
-              className={`bg-white p-5 rounded-xl border transition-all shadow-xs space-y-3 ${estiloContenedor}`}
+              className={`bg-[#131d35] p-5 sm:p-6 rounded-2xl border transition-all shadow-xl space-y-3.5 ${estiloContenedor}`}
             >
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3 gap-3">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <span className="text-xs font-bold text-purple-700 bg-purple-50 px-2.5 py-1 rounded border border-purple-200 shrink-0">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3 gap-3">
+                <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                  <span className="text-xs font-bold text-purple-300 bg-purple-500/15 px-2.5 py-1 rounded-lg border border-purple-500/30 shrink-0">
                     {hu.id}
                   </span>
-                  <span className="text-xs font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 shrink-0">
+                  <span className="text-xs font-semibold text-sky-400 bg-blue-500/15 px-2 py-0.5 rounded-lg border border-blue-500/30 shrink-0">
                     Origen: {hu.rf_origen}
                   </span>
 
                   {padreFueModificado && (
-                    <span className="text-[10px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300 shrink-0">
-                      ⚠️ Requisito {hu.rf_origen} modificado
+                    <span className="text-[10px] font-bold text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/30 shrink-0">
+                      Requisito {hu.rf_origen} modificado
                     </span>
                   )}
 
                   {!padreFueModificado && padreFueSincronizado && (
-                    <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300 shrink-0">
-                      ✓ Sincronizado con {hu.rf_origen}
+                    <span className="text-[10px] font-bold text-teal-300 bg-teal-500/15 px-2 py-0.5 rounded border border-teal-500/30 shrink-0 flex items-center gap-1">
+                      <CheckIcon className="w-3 h-3 text-teal-300" />
+                      <span>Sincronizado con {hu.rf_origen}</span>
                     </span>
                   )}
 
@@ -328,7 +329,7 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
                     type="text"
                     value={hu.titulo}
                     onChange={(e) => actualizarCampo(index, "titulo", e.target.value)}
-                    className="font-bold text-sm text-slate-800 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-purple-500 focus:outline-none px-1 flex-1 min-w-0 w-full"
+                    className="font-bold text-sm text-white bg-transparent border-b border-transparent hover:border-slate-700 focus:border-blue-500 focus:outline-none px-1 flex-1 min-w-0 w-full"
                   />
                 </div>
 
@@ -338,58 +339,58 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
                       type="button"
                       disabled={regenerandoRuId === hu.rf_origen}
                       onClick={() => handleRegenerarHUsPorRU(hu.rf_origen)}
-                      className="text-[11px] font-semibold text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-400 px-2.5 py-1 rounded-lg transition disabled:opacity-50 shrink-0"
+                      className="text-[11px] font-semibold text-amber-300 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 px-2.5 py-1 rounded-lg transition disabled:opacity-50 shrink-0"
                     >
-                      {regenerandoRuId === hu.rf_origen ? "Re-derivando..." : `🔄 Re-derivar ${hu.rf_origen}`}
+                      {regenerandoRuId === hu.rf_origen ? "Re-derivando..." : `Re-derivar ${hu.rf_origen}`}
                     </button>
                   )}
 
                   <button
                     onClick={() => handleEliminarHistoria(index)}
                     title="Descartar Historia y tareas derivadas"
-                    className="text-xs text-red-500 hover:text-red-700 p-1.5 hover:bg-red-50 rounded transition shrink-0"
+                    className="text-xs text-red-400 hover:text-red-300 p-1.5 hover:bg-red-500/10 rounded-lg transition shrink-0"
                   >
-                    🗑️
+                    <TrashIcon className="w-4 h-4" />
                   </button>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-                <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100">
-                  <span className="font-semibold text-slate-500 block mb-1">Como:</span>
+                <div className="p-3 bg-[#0f172a] rounded-xl border border-slate-800">
+                  <span className="font-semibold text-slate-400 block mb-1">Como:</span>
                   <input
                     type="text"
                     value={hu.rol}
                     onChange={(e) => actualizarCampo(index, "rol", e.target.value)}
-                    className="w-full bg-white p-1.5 rounded border border-slate-200 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                    className="w-full bg-[#131d35] text-white p-2 rounded-lg border border-slate-700 focus:border-blue-500 focus:outline-none"
                   />
                 </div>
 
-                <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100">
-                  <span className="font-semibold text-slate-500 block mb-1">Quiero:</span>
+                <div className="p-3 bg-[#0f172a] rounded-xl border border-slate-800">
+                  <span className="font-semibold text-slate-400 block mb-1">Quiero:</span>
                   <textarea
                     rows={2}
                     value={hu.quiero}
                     onChange={(e) => actualizarCampo(index, "quiero", e.target.value)}
-                    className="w-full bg-white p-1.5 rounded border border-slate-200 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                    className="w-full bg-[#131d35] text-white p-2 rounded-lg border border-slate-700 focus:border-blue-500 focus:outline-none"
                   />
                 </div>
 
-                <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100">
-                  <span className="font-semibold text-slate-500 block mb-1">Para:</span>
+                <div className="p-3 bg-[#0f172a] rounded-xl border border-slate-800">
+                  <span className="font-semibold text-slate-400 block mb-1">Para:</span>
                   <textarea
                     rows={2}
                     value={hu.para}
                     onChange={(e) => actualizarCampo(index, "para", e.target.value)}
-                    className="w-full bg-white p-1.5 rounded border border-slate-200 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                    className="w-full bg-[#131d35] text-white p-2 rounded-lg border border-slate-700 focus:border-blue-500 focus:outline-none"
                   />
                 </div>
               </div>
 
-              {/* Criterios de Aceptación: Edición manual en línea + Regeneración IA */}
-              <div className="bg-slate-50/70 p-3.5 rounded-lg border border-slate-100 space-y-2.5">
+              {/* Criterios de Aceptación */}
+              <div className="bg-[#0f172a] p-4 rounded-xl border border-slate-800 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                  <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">
                     Criterios de Aceptación:
                   </span>
                   <div className="flex items-center gap-2">
@@ -398,44 +399,44 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
                         type="button"
                         disabled={criterioLoadingId === hu.id}
                         onClick={() => handleRegenerarCriteriosIA(index)}
-                        className="text-[11px] font-semibold text-purple-700 hover:text-purple-900 bg-purple-100 border border-purple-300 px-2.5 py-1 rounded transition disabled:opacity-50"
+                        className="text-[11px] font-semibold text-purple-300 hover:text-white bg-purple-500/20 border border-purple-500/30 px-2.5 py-1 rounded-lg transition disabled:opacity-50"
                       >
-                        {criterioLoadingId === hu.id ? "Actualizando..." : "✨ Regenerar criterios con IA"}
+                        {criterioLoadingId === hu.id ? "Actualizando..." : "Regenerar criterios con IA"}
                       </button>
                     )}
                     <button
                       type="button"
                       onClick={() => handleAgregarCriterioManual(index)}
-                      className="text-[11px] font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 px-2.5 py-1 rounded transition hover:bg-slate-50"
+                      className="text-[11px] font-semibold text-slate-300 hover:text-white bg-[#131d35] border border-slate-700 px-2.5 py-1 rounded-lg transition hover:bg-slate-800"
                     >
                       + Criterio
                     </button>
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   {hu.criterios_aceptacion.map((criterio, i) => (
                     <div key={i} className="flex items-center gap-2">
-                      <span className="text-slate-400 text-xs font-bold">•</span>
+                      <span className="text-slate-500 text-xs font-bold">•</span>
                       <input
                         type="text"
                         value={criterio}
                         onChange={(e) => handleEditarCriterioManual(index, i, e.target.value)}
-                        className="w-full text-xs text-slate-800 bg-white border border-slate-200 rounded px-2.5 py-1 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-200"
+                        className="w-full text-xs text-slate-100 bg-[#131d35] border border-slate-700 rounded-lg px-3 py-1.5 focus:border-blue-500 focus:outline-none"
                         placeholder="Criterio de aceptación comprobable..."
                       />
                       <button
                         type="button"
                         onClick={() => handleEliminarCriterioManual(index, i)}
                         title="Eliminar este criterio"
-                        className="text-slate-400 hover:text-red-500 text-xs px-1.5 py-0.5 rounded transition"
+                        className="text-slate-400 hover:text-red-400 p-1 rounded-lg transition"
                       >
-                        ✕
+                        <CloseIcon className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   ))}
                   {hu.criterios_aceptacion.length === 0 && (
-                    <p className="text-[11px] text-slate-400 italic">
+                    <p className="text-[11px] text-slate-500 italic">
                       No hay criterios definidos. Agrega uno con "+ Criterio" o regenera con IA.
                     </p>
                   )}
@@ -446,15 +447,15 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
         })}
       </div>
 
-      <div className="bg-purple-50/40 p-5 rounded-xl border border-dashed border-purple-300 space-y-3">
-        <label className="text-xs font-bold text-purple-900 uppercase tracking-wider block">
+      <div className="bg-[#131d35] p-6 rounded-2xl border border-dashed border-slate-700 space-y-3.5">
+        <label className="text-xs font-bold text-purple-400 uppercase tracking-wider block">
           + Agregar Historia de Usuario Manual
         </label>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
           <select
             value={nuevoRfOrigen}
             onChange={(e) => setNuevoRfOrigen(e.target.value)}
-            className="text-xs p-2 bg-white border border-slate-300 rounded-lg"
+            className="text-xs p-2.5 bg-[#0f172a] text-white border border-slate-700 rounded-xl"
           >
             {requisitosDisponibles.map((ru) => (
               <option key={ru.id} value={ru.id}>
@@ -467,29 +468,29 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
             placeholder="Título de la historia..."
             value={nuevoTitulo}
             onChange={(e) => setNuevoTitulo(e.target.value)}
-            className="sm:col-span-2 text-xs p-2 bg-white border border-slate-300 rounded-lg"
+            className="sm:col-span-2 text-xs p-2.5 bg-[#0f172a] text-white border border-slate-700 rounded-xl placeholder-slate-500"
           />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 text-xs">
           <input
             type="text"
             value={nuevoRol}
             onChange={(e) => setNuevoRol(e.target.value)}
-            className="p-2 bg-white border border-slate-300 rounded-lg"
+            className="p-2.5 bg-[#0f172a] text-white border border-slate-700 rounded-xl"
           />
           <textarea
             rows={2}
             placeholder="Acción..."
             value={nuevoQuiero}
             onChange={(e) => setNuevoQuiero(e.target.value)}
-            className="p-2 bg-white border border-slate-300 rounded-lg"
+            className="p-2.5 bg-[#0f172a] text-white border border-slate-700 rounded-xl placeholder-slate-500"
           />
           <textarea
             rows={2}
             placeholder="Beneficio..."
             value={nuevoPara}
             onChange={(e) => setNuevoPara(e.target.value)}
-            className="p-2 bg-white border border-slate-300 rounded-lg"
+            className="p-2.5 bg-[#0f172a] text-white border border-slate-700 rounded-xl placeholder-slate-500"
           />
         </div>
         <textarea
@@ -497,12 +498,12 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
           placeholder="Criterios (uno por línea)..."
           value={nuevoCriterioManual}
           onChange={(e) => setNuevoCriterioManual(e.target.value)}
-          className="w-full text-xs p-2 bg-white border border-slate-300 rounded-lg"
+          className="w-full text-xs p-2.5 bg-[#0f172a] text-white border border-slate-700 rounded-xl placeholder-slate-500"
         />
         <div className="flex justify-end">
           <button
             onClick={agregarHistoriaManual}
-            className="text-xs font-semibold px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-lg transition"
+            className="text-xs font-semibold px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition"
           >
             Añadir Historia al Catálogo
           </button>
@@ -512,10 +513,10 @@ export const HistoriasUsuarioView: React.FC<HistoriasUsuarioViewProps> = ({
       <div className="flex justify-end pt-2">
         <button
           onClick={() => onConfirmar(historias)}
-          className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-lg shadow-sm transition flex items-center gap-2"
+          className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-blue-600/25 transition flex items-center gap-2"
         >
           <span>Aprobar y Consolidar Historias ({historias.length})</span>
-          <span>✓</span>
+          <CheckIcon className="w-4 h-4 text-teal-300" />
         </button>
       </div>
     </div>
