@@ -442,3 +442,100 @@ export const SlidersIcon: React.FC<IconProps> = ({ className = "w-4 h-4", size, 
     <line x1="17" y1="16" x2="23" y2="16" />
   </svg>
 );
+
+export const EditIcon: React.FC<IconProps> = ({ className = "w-4 h-4", size, ...props }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    width={size}
+    height={size}
+    {...props}
+  >
+    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+    <path d="m15 5 4 4" />
+  </svg>
+);
+
+export const ArrowLeftIcon: React.FC<IconProps> = ({ className = "w-4 h-4", size, ...props }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    width={size}
+    height={size}
+    {...props}
+  >
+    <polyline points="15 18 9 12 15 6" />
+  </svg>
+);
+
+export const ArrowRightIcon: React.FC<IconProps> = ({ className = "w-4 h-4", size, ...props }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    width={size}
+    height={size}
+    {...props}
+  >
+    <polyline points="9 18 15 12 9 6" />
+  </svg>
+);
+
+export const RotateCcwIcon: React.FC<IconProps> = ({ className = "w-4 h-4", size, ...props }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    width={size}
+    height={size}
+    {...props}
+  >
+    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+    <path d="M3 3v5h5" />
+  </svg>
+);
+
+export const FileSpreadsheetIcon: React.FC<IconProps> = ({ className = "w-4 h-4", size, ...props }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    width={size}
+    height={size}
+    {...props}
+  >
+    <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+    <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+    <path d="M8 13h2" />
+    <path d="M14 13h2" />
+    <path d="M8 17h2" />
+    <path d="M14 17h2" />
+  </svg>
+);

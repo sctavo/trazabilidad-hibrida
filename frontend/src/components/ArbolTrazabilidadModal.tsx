@@ -8,7 +8,9 @@ import {
   ClockIcon,
   CalendarIcon,
   CheckIcon,
+  FileSpreadsheetIcon,
 } from "./Icons";
+import { exportarArbolTrazabilidadExcel } from "../utils/exportacionExcel";
 
 interface ArbolTrazabilidadModalProps {
   proyectoId: string;
@@ -44,6 +46,24 @@ export const ArbolTrazabilidadModal: React.FC<ArbolTrazabilidadModalProps> = ({
   const [busqueda, setBusqueda] = useState("");
   const [nodosExpandidos, setNodosExpandidos] = useState<Set<string>>(new Set());
   const [copiado, setCopiado] = useState(false);
+  const [mensajeExcel, setMensajeExcel] = useState(false);
+
+  const handleExportarExcel = () => {
+    if (!detalle) return;
+    try {
+      exportarArbolTrazabilidadExcel({
+        nombreProyecto,
+        requisitos: detalle.requisitos || [],
+        historias: detalle.historias_usuario || [],
+        tareas: detalle.tareas || [],
+        modeloIa: detalle.modelo_ia,
+      });
+      setMensajeExcel(true);
+      setTimeout(() => setMensajeExcel(false), 4500);
+    } catch (err) {
+      console.error("Error al exportar árbol de trazabilidad a Excel:", err);
+    }
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -226,6 +246,16 @@ export const ArbolTrazabilidadModal: React.FC<ArbolTrazabilidadModalProps> = ({
               className="px-2.5 py-1 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white font-medium text-[11px] transition"
             >
               Colapsar todo
+            </button>
+            <button
+              type="button"
+              onClick={handleExportarExcel}
+              disabled={cargando || !!error}
+              className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-[11px] transition flex items-center gap-1.5 shadow-xs"
+              title="Exportar matriz completa a Excel (.xlsx)"
+            >
+              <FileSpreadsheetIcon className="w-3.5 h-3.5" />
+              <span>Exportar Excel</span>
             </button>
             <button
               type="button"
@@ -516,7 +546,25 @@ export const ArbolTrazabilidadModal: React.FC<ArbolTrazabilidadModalProps> = ({
             <span>Trazabilidad verificada para auditoría de ingeniería de software.</span>
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end relative">
+            {mensajeExcel && (
+              <div className="absolute -top-12 right-0 bg-slate-900 border border-emerald-500 text-white text-[11px] px-3 py-1.5 rounded-xl shadow-lg animate-in fade-in slide-in-from-bottom-2 whitespace-nowrap flex items-center gap-1.5">
+                <CheckIcon className="w-3.5 h-3.5 text-emerald-400" />
+                <span>¡Árbol de Trazabilidad exportado exitosamente a Excel (.xlsx)!</span>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={handleExportarExcel}
+              disabled={cargando || !!error}
+              className="px-4 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow-xs transition flex items-center gap-2"
+              title="Descargar matriz de trazabilidad jerárquica en archivo Excel (.xlsx)"
+            >
+              <FileSpreadsheetIcon className="w-4 h-4" />
+              <span>Exportar a Excel (.xlsx)</span>
+            </button>
+
             <button
               type="button"
               onClick={onClose}

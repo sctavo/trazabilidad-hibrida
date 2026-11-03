@@ -275,13 +275,30 @@ export function calendarizarProyecto(
     }
   }
 
-  // Determinar total de semanas
-  let maxSemana = 1;
+  return recalcularMetricasGantt(tareasCalendarizadas, params);
+}
+
+/**
+ * Recalcula semanas, fechas globales y métricas de carga horaria a partir de una lista
+ * de tareas calendarizadas (incluso si han sido modificadas manualmente por el usuario).
+ */
+export function recalcularMetricasGantt(
+  tareasCalendarizadas: TareaCalendarizada[],
+  params: ParametrosCalendarizacion,
+  semanasMinimas: number = 0
+): ResultadoCalendarizacion {
+  const fechaInicioBase = parseFecha(params.fechaInicio);
+  const fechaInicioHabil = asegurarDiaHabil(fechaInicioBase, params.diasPorSemana);
+  const lunesProyecto = obtenerLunesDeSemana(fechaInicioHabil);
+
+  // Determinar total de semanas considerando posibles semanas mínimas requeridas
+  let maxSemana = Math.max(1, semanasMinimas);
   tareasCalendarizadas.forEach((t) => {
     if (t.semanaFin > maxSemana) maxSemana = t.semanaFin;
+    if (t.semanaInicio > maxSemana) maxSemana = t.semanaInicio;
   });
 
-  // Generar lista de semanas
+  // Generar lista de semanas con cálculo dinámico de fechas y horas
   const semanas: SemanaGantt[] = [];
   for (let s = 1; s <= maxSemana; s++) {
     const lunesSemana = new Date(lunesProyecto.getTime() + (s - 1) * 7 * 86400000);
@@ -292,7 +309,7 @@ export function calendarizarProyecto(
     const horasSemana = tareasCalendarizadas.reduce((acc, t) => {
       if (t.semanaInicio <= s && t.semanaFin >= s) {
         // Distribuir horas proporcionalmente si la tarea abarca varias semanas
-        const span = t.semanaFin - t.semanaInicio + 1;
+        const span = Math.max(1, t.semanaFin - t.semanaInicio + 1);
         return acc + Math.round(t.estimacion_horas / span);
       }
       return acc;
@@ -309,13 +326,16 @@ export function calendarizarProyecto(
   }
 
   // Fechas globales del proyecto
-  const primerInicio = tareasCalendarizadas[0]?.fechaInicio || formatearFechaISO(fechaInicioHabil);
+  const primerInicio = tareasCalendarizadas.reduce((min, t) => {
+    return t.fechaInicio < min ? t.fechaInicio : min;
+  }, tareasCalendarizadas[0]?.fechaInicio || formatearFechaISO(fechaInicioHabil));
+
   const ultimoFin = tareasCalendarizadas.reduce((max, t) => {
     return t.fechaFin > max ? t.fechaFin : max;
   }, primerInicio);
 
-  const totalHoras = tareas.reduce((acc, t) => acc + (t.estimacion_horas || 0), 0);
-  const totalDiasHabiles = tareasCalendarizadas.reduce((acc, t) => acc + t.duracionDias, 0);
+  const totalHoras = tareasCalendarizadas.reduce((acc, t) => acc + (t.estimacion_horas || 0), 0);
+  const totalDiasHabiles = tareasCalendarizadas.reduce((acc, t) => acc + (t.duracionDias || 1), 0);
   const horasPorSemanaPromedio = maxSemana > 0 ? Math.round(totalHoras / maxSemana) : totalHoras;
 
   return {
@@ -327,5 +347,59 @@ export function calendarizarProyecto(
     totalDiasHabiles,
     totalHoras,
     horasPorSemanaPromedio,
+  };
+}
+
+/**
+ * Mueve una tarea a una nueva semana de inicio y recalcula sus fechas asociadas,
+ * preservando o ajustando su duración en semanas.
+ */
+export function moverTareaASemana(
+  tarea: TareaCalendarizada,
+  nuevaSemanaInicio: number,
+  params: ParametrosCalendarizacion,
+  nuevaSemanaFin?: number
+): TareaCalendarizada {
+  const sIni = Math.max(1, nuevaSemanaInicio);
+  const span = nuevaSemanaFin
+    ? Math.max(1, nuevaSemanaFin - sIni + 1)
+    : Math.max(1, tarea.semanaFin - tarea.semanaInicio + 1);
+  const sFin = sIni + span - 1;
+
+  const fechaInicioBase = parseFecha(params.fechaInicio);
+  const fechaInicioHabil = asegurarDiaHabil(fechaInicioBase, params.diasPorSemana);
+  const lunesProyecto = obtenerLunesDeSemana(fechaInicioHabil);
+
+  // Fecha de inicio de la tarea
+  const lunesSemanaIni = new Date(lunesProyecto.getTime() + (sIni - 1) * 7 * 86400000);
+  // Fecha de fin de la tarea
+  const diasSumarFin = params.diasPorSemana === 6 ? 5 : 4;
+  const finSemanaFin = new Date(
+    lunesProyecto.getTime() + (sFin - 1) * 7 * 86400000 + diasSumarFin * 86400000
+  );
+
+  return {
+    ...tarea,
+    semanaInicio: sIni,
+    semanaFin: sFin,
+    fechaInicio: formatearFechaISO(lunesSemanaIni),
+    fechaFin: formatearFechaISO(finSemanaFin),
+  };
+}
+
+/**
+ * Actualiza las horas estimadas de una tarea y su duración en días según la jornada.
+ */
+export function actualizarHorasTarea(
+  tarea: TareaCalendarizada,
+  nuevasHoras: number,
+  params: ParametrosCalendarizacion
+): TareaCalendarizada {
+  const horas = Math.max(1, nuevasHoras);
+  const duracionDias = Math.max(1, Math.ceil(horas / params.horasPorDia));
+  return {
+    ...tarea,
+    estimacion_horas: horas,
+    duracionDias,
   };
 }
