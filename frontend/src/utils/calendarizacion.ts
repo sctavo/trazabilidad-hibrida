@@ -63,17 +63,16 @@ export function formatearFechaLarga(d: Date): string {
 }
 
 /**
- * Verifica si un día es hábil según la jornada seleccionada (5 o 6 días).
+ * Verifica si un día es hábil según la jornada seleccionada (1 a 7 días).
+ * Para 1..6 días, el régimen laboral inicia el Lunes (1) hasta el día correspondiente.
+ * Para 7 días, toda la semana (incluido Domingo) es hábil.
  */
 export function esDiaHabil(d: Date, diasPorSemana: number): boolean {
+  const dias = Math.max(1, Math.min(7, Math.round(diasPorSemana || 5)));
+  if (dias >= 7) return true;
   const diaSemana = d.getDay(); // 0: Dom, 1: Lun, ..., 6: Sáb
-  if (diasPorSemana === 5) {
-    return diaSemana >= 1 && diaSemana <= 5;
-  }
-  if (diasPorSemana === 6) {
-    return diaSemana >= 1 && diaSemana <= 6;
-  }
-  return true;
+  if (diaSemana === 0) return false;
+  return diaSemana <= dias;
 }
 
 /**
@@ -300,9 +299,9 @@ export function recalcularMetricasGantt(
 
   // Generar lista de semanas con cálculo dinámico de fechas y horas
   const semanas: SemanaGantt[] = [];
+  const diasSumarFin = Math.max(0, Math.min(6, Math.round(params.diasPorSemana || 5) - 1));
   for (let s = 1; s <= maxSemana; s++) {
     const lunesSemana = new Date(lunesProyecto.getTime() + (s - 1) * 7 * 86400000);
-    const diasSumarFin = params.diasPorSemana === 6 ? 5 : 4; // Sábado (+5) o Viernes (+4)
     const finSemana = new Date(lunesSemana.getTime() + diasSumarFin * 86400000);
 
     // Sumar horas de tareas que se ejecutan durante esta semana
@@ -373,7 +372,7 @@ export function moverTareaASemana(
   // Fecha de inicio de la tarea
   const lunesSemanaIni = new Date(lunesProyecto.getTime() + (sIni - 1) * 7 * 86400000);
   // Fecha de fin de la tarea
-  const diasSumarFin = params.diasPorSemana === 6 ? 5 : 4;
+  const diasSumarFin = Math.max(0, Math.min(6, Math.round(params.diasPorSemana || 5) - 1));
   const finSemanaFin = new Date(
     lunesProyecto.getTime() + (sFin - 1) * 7 * 86400000 + diasSumarFin * 86400000
   );

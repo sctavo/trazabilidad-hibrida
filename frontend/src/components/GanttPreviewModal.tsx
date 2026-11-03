@@ -444,46 +444,77 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
               />
             </div>
 
-            {/* 2. Horas por Jornada Diaria */}
+            {/* 2. Horas por Jornada Diaria (Libertad total: 1 a 20 hrs/día) */}
             <div className="space-y-1 bg-[#131d35] p-3 rounded-xl border border-slate-800">
-              <label className="font-semibold text-slate-300 flex items-center gap-1.5">
-                <ClockIcon className="w-3.5 h-3.5 text-teal-400" />
-                <span>Jornada Diaria</span>
-              </label>
-              <select
-                value={params.horasPorDia}
-                onChange={(e) =>
-                  setParams((prev) => ({
-                    ...prev,
-                    horasPorDia: Number(e.target.value),
-                  }))
-                }
-                className="w-full text-xs bg-[#0f172a] border border-slate-700 rounded-lg px-2.5 py-1.5 font-medium text-white focus:outline-none focus:border-blue-500"
-              >
-                <option value={4}>4 hrs / día (Part-time)</option>
-                <option value={6}>6 hrs / día (Flexible)</option>
-                <option value={8}>8 hrs / día (Jornada Completa)</option>
-              </select>
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-slate-300 flex items-center gap-1.5">
+                  <ClockIcon className="w-3.5 h-3.5 text-teal-400" />
+                  <span>Jornada Diaria</span>
+                </label>
+                <span className="font-mono font-bold text-[11px] text-teal-300">
+                  {params.horasPorDia}h / día
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={params.horasPorDia}
+                  onChange={(e) => {
+                    const val = Math.max(1, Math.min(20, Number(e.target.value) || 1));
+                    setParams((prev) => ({ ...prev, horasPorDia: val }));
+                  }}
+                  className="w-16 text-xs bg-[#0f172a] border border-slate-700 rounded-lg px-2 py-1.5 font-bold text-white focus:outline-none focus:border-blue-500 text-center"
+                  title="Horas de trabajo por jornada diaria (1 a 20)"
+                />
+                <div className="flex items-center gap-1 flex-1 overflow-x-auto">
+                  {[4, 6, 8, 10, 12].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setParams((prev) => ({ ...prev, horasPorDia: preset }))}
+                      className={`px-1.5 py-1 rounded text-[10px] font-semibold transition ${
+                        params.horasPorDia === preset
+                          ? "bg-teal-500/25 text-teal-300 border border-teal-500/50"
+                          : "bg-[#0f172a] text-slate-400 hover:text-white border border-slate-800"
+                      }`}
+                    >
+                      {preset}h
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
-            {/* 3. Días Laborales por Semana */}
+            {/* 3. Días Laborales por Semana (Libertad total: 1 a 7 días) */}
             <div className="space-y-1 bg-[#131d35] p-3 rounded-xl border border-slate-800">
-              <label className="font-semibold text-slate-300 flex items-center gap-1.5">
-                <CalendarIcon className="w-3.5 h-3.5 text-purple-400" />
-                <span>Días Laborales</span>
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-slate-300 flex items-center gap-1.5">
+                  <CalendarIcon className="w-3.5 h-3.5 text-purple-400" />
+                  <span>Días Laborales</span>
+                </label>
+                <span className="font-mono font-bold text-[11px] text-purple-300">
+                  {params.diasPorSemana} {params.diasPorSemana === 1 ? "día" : "días"}/sem
+                </span>
+              </div>
               <select
                 value={params.diasPorSemana}
                 onChange={(e) =>
                   setParams((prev) => ({
                     ...prev,
-                    diasPorSemana: Number(e.target.value),
+                    diasPorSemana: Math.max(1, Math.min(7, Number(e.target.value) || 5)),
                   }))
                 }
                 className="w-full text-xs bg-[#0f172a] border border-slate-700 rounded-lg px-2.5 py-1.5 font-medium text-white focus:outline-none focus:border-blue-500"
               >
-                <option value={5}>5 días (Lunes a Viernes)</option>
-                <option value={6}>6 días (Lunes a Sábado)</option>
+                <option value={1}>1 día / sem (Solo Lunes)</option>
+                <option value={2}>2 días / sem (Lunes y Martes)</option>
+                <option value={3}>3 días / sem (Lunes a Miércoles)</option>
+                <option value={4}>4 días / sem (Lunes a Jueves)</option>
+                <option value={5}>5 días / sem (Lunes a Viernes - Estándar)</option>
+                <option value={6}>6 días / sem (Lunes a Sábado)</option>
+                <option value={7}>7 días / sem (Lunes a Domingo - Continuo)</option>
               </select>
             </div>
 
@@ -818,9 +849,9 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
           )}
         </div>
 
-        {/* Modal / Dialog de Edición Rápida de Tarea */}
+        {/* Modal / Dialog de Edición Rápida de Tarea (z-[100] para sobreponerse a cabeceras fijas) */}
         {tareaEnEdicion && (
-          <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-950/70 p-4">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/85 backdrop-blur-sm p-4 animate-in fade-in duration-150">
             <div className="bg-[#131d35] border border-slate-700 rounded-2xl w-full max-w-md p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95">
               <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                 <div className="flex items-center gap-2">
