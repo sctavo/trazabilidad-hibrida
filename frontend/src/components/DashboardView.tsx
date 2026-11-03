@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import logoImg from "../assets/logo.png";
 import { MODELOS_IA_CATALOGO, type ProyectoResumen, type Usuario } from "../types";
 import { PerfilConfiguracionModal } from "./PerfilConfiguracionModal";
 import { ArbolTrazabilidadModal } from "./ArbolTrazabilidadModal";
@@ -234,18 +235,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* Barra de Navegación Superior */}
       <header className="bg-[#131d35] border-b border-slate-800 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center font-black text-sm shadow-[0_0_20px_rgba(37,99,235,0.35)] border border-blue-400/30">
-              RQ
-            </div>
-            <div>
-              <span className="font-extrabold text-lg tracking-tight text-white block leading-tight">
-                REQGEN
-              </span>
-              <span className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase block">
-                Plataforma de Trazabilidad Híbrida
-              </span>
-            </div>
+          <div className="flex items-center">
+            <img
+              src={logoImg}
+              alt="ReqGen"
+              className="h-10 sm:h-12 w-auto object-contain cursor-pointer"
+              onClick={() => {}}
+            />
           </div>
 
           <div className="flex items-center gap-3">
