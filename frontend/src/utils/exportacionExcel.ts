@@ -39,6 +39,35 @@ function sanitizarNombreArchivo(nombre: string): string {
 }
 
 /**
+ * Fusiona un rango de celdas en la hoja de cálculo y asegura que todas las celdas
+ * del bloque compartan el mismo estilo y relleno, evitando cortes o parches visuales.
+ */
+function fusionarYEstilarRango(
+  ws: any,
+  rInicio: number,
+  cInicio: number,
+  rFin: number,
+  cFin: number,
+  estilo: any
+): void {
+  if (!ws["!merges"]) ws["!merges"] = [];
+  ws["!merges"].push({
+    s: { r: rInicio, c: cInicio },
+    e: { r: rFin, c: cFin },
+  });
+
+  for (let r = rInicio; r <= rFin; r++) {
+    for (let c = cInicio; c <= cFin; c++) {
+      const cellRef = XLSX.utils.encode_cell({ r, c });
+      if (!ws[cellRef]) {
+        ws[cellRef] = { t: "s", v: "" };
+      }
+      ws[cellRef].s = estilo;
+    }
+  }
+}
+
+/**
  * Retorna el estilo de celda según la disciplina técnica.
  */
 function obtenerEstiloDisciplina(tipo: string, esBarraGantt = false) {
@@ -205,26 +234,22 @@ export function exportarPlanTrabajoExcel({
 
   const semanas = resultado.semanas;
   const tareas = resultado.tareasCalendarizadas;
+  const totalColumnasGantt = 12 + semanas.length;
+  const ultimaColIdx = totalColumnasGantt - 1;
 
   // -------------------------------------------------------------
-  // HOJA 1: CARTA GANTT CON FORMATO CORPORATIVO
+  // HOJA 1: CARTA GANTT CON FORMATO CORPORATIVO Y RANGOS FUSIONADOS
   // -------------------------------------------------------------
   const filasGantt: (string | number)[][] = [
     ["PLAN DE TRABAJO Y CARTA GANTT - TRAZABILIDAD HÍBRIDA"],
     [`Proyecto: ${nombreProyecto}`],
     [
-      `Fecha de Emisión: ${hoyStr}`,
-      `Total Horas: ${resultado.totalHoras} hrs`,
-      `Total Semanas: ${resultado.totalSemanas}`,
-      `Días Hábiles: ${resultado.totalDiasHabiles} días`,
+      `Fecha de Emisión: ${hoyStr}   |   Total Horas: ${resultado.totalHoras} hrs   |   Total Semanas: ${resultado.totalSemanas}   |   Días Hábiles: ${resultado.totalDiasHabiles} días`,
     ],
     [
-      `Período: ${resultado.fechaInicioProyecto} a ${resultado.fechaFinProyecto}`,
-      `Jornada: ${params.horasPorDia} hrs/día`,
-      `Régimen: ${params.diasPorSemana} días/semana`,
-      `Modalidad: ${params.modalidad === "disciplina" ? "Paralela por Disciplina" : "Secuencial Ágil"}`,
+      `Período: ${resultado.fechaInicioProyecto} a ${resultado.fechaFinProyecto}   |   Jornada: ${params.horasPorDia} hrs/día   |   Régimen: ${params.diasPorSemana} días/sem   |   Modalidad: ${params.modalidad === "disciplina" ? "Paralela por Disciplina" : "Secuencial Ágil"}`,
     ],
-    [], // Fila en blanco
+    [], // Fila en blanco separadora
   ];
 
   // Encabezados de tabla de tareas
@@ -304,61 +329,69 @@ export function exportarPlanTrabajoExcel({
 
   const wsGantt = XLSX.utils.aoa_to_sheet(filasGantt);
 
-  // Configuración de anchos de columna
+  // Configuración generosa de anchos de columna para evitar truncamientos
   const colWidthsGantt = [
-    { wch: 11 }, // Código
-    { wch: 38 }, // Tarea
-    { wch: 16 }, // Disciplina
-    { wch: 12 }, // HU
-    { wch: 32 }, // Título HU
-    { wch: 12 }, // RU
-    { wch: 12 }, // Horas
-    { wch: 12 }, // Días
-    { wch: 14 }, // Inicio
-    { wch: 14 }, // Fin
-    { wch: 12 }, // Sem Inicio
-    { wch: 12 }, // Sem Fin
+    { wch: 12 }, // Código
+    { wch: 42 }, // Tarea
+    { wch: 18 }, // Disciplina
+    { wch: 14 }, // HU
+    { wch: 36 }, // Título HU
+    { wch: 14 }, // RU
+    { wch: 14 }, // Horas
+    { wch: 14 }, // Días
+    { wch: 15 }, // Inicio
+    { wch: 15 }, // Fin
+    { wch: 14 }, // Sem Inicio
+    { wch: 14 }, // Sem Fin
   ];
   semanas.forEach(() => {
-    colWidthsGantt.push({ wch: 20 });
+    colWidthsGantt.push({ wch: 22 });
   });
   wsGantt["!cols"] = colWidthsGantt;
 
-  // APLICAR ESTILOS COLORIDOS A LAS CELDAS DE LA CARTA GANTT
+  // Alturas de fila elegantes
+  wsGantt["!rows"] = [
+    { hpt: 30 }, // Título principal
+    { hpt: 22 }, // Proyecto
+    { hpt: 20 }, // Metadatos 1
+    { hpt: 20 }, // Metadatos 2
+    { hpt: 12 }, // Separador
+    { hpt: 26 }, // Encabezados de tabla
+  ];
+
+  // FUSIONAR RANGOS DE CABECERA A LO ANCHO DE TODAS LAS COLUMNAS (Solución para textos cortados)
+  const estiloTituloHero = {
+    fill: { fgColor: { rgb: COLORES.NAVY_OSCURO } },
+    font: { name: "Segoe UI", sz: 14, bold: true, color: { rgb: COLORES.AZUL_CIELO } },
+    alignment: { vertical: "center", horizontal: "left", indent: 1 },
+  };
+  const estiloProyectoHero = {
+    fill: { fgColor: { rgb: COLORES.NAVY_MEDIO } },
+    font: { name: "Segoe UI", sz: 11, bold: true, color: { rgb: COLORES.BLANCO } },
+    alignment: { vertical: "center", horizontal: "left", indent: 1 },
+  };
+  const estiloMetadatosHero = {
+    fill: { fgColor: { rgb: COLORES.SLATE_800 } },
+    font: { name: "Segoe UI", sz: 9, bold: false, color: { rgb: "E2E8F0" } },
+    alignment: { vertical: "center", horizontal: "left", indent: 1 },
+  };
+
+  fusionarYEstilarRango(wsGantt, 0, 0, 0, ultimaColIdx, estiloTituloHero);
+  fusionarYEstilarRango(wsGantt, 1, 0, 1, ultimaColIdx, estiloProyectoHero);
+  fusionarYEstilarRango(wsGantt, 2, 0, 2, ultimaColIdx, estiloMetadatosHero);
+  fusionarYEstilarRango(wsGantt, 3, 0, 3, ultimaColIdx, estiloMetadatosHero);
+
+  // APLICAR ESTILOS A LA TABLA DE TAREAS Y SEMANAS
   const rangeGantt = XLSX.utils.decode_range(wsGantt["!ref"] || "A1:A1");
 
-  for (let R = rangeGantt.s.r; R <= rangeGantt.e.r; ++R) {
+  for (let R = filaIndiceEncabezado; R <= rangeGantt.e.r; ++R) {
     for (let C = rangeGantt.s.c; C <= rangeGantt.e.c; ++C) {
       const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
       const cell = wsGantt[cellRef];
       if (!cell) continue;
 
-      // Fila 0: Título Principal
-      if (R === 0) {
-        cell.s = {
-          fill: { fgColor: { rgb: COLORES.NAVY_OSCURO } },
-          font: { name: "Segoe UI", sz: 14, bold: true, color: { rgb: COLORES.AZUL_CIELO } },
-          alignment: { vertical: "center", horizontal: "left" },
-        };
-      }
-      // Fila 1: Nombre de proyecto
-      else if (R === 1) {
-        cell.s = {
-          fill: { fgColor: { rgb: COLORES.NAVY_MEDIO } },
-          font: { name: "Segoe UI", sz: 11, bold: true, color: { rgb: COLORES.BLANCO } },
-          alignment: { vertical: "center", horizontal: "left" },
-        };
-      }
-      // Filas 2 y 3: Metadatos del proyecto
-      else if (R === 2 || R === 3) {
-        cell.s = {
-          fill: { fgColor: { rgb: COLORES.SLATE_800 } },
-          font: { name: "Segoe UI", sz: 9, bold: false, color: { rgb: "CBD5E1" } },
-          alignment: { vertical: "center", horizontal: "left" },
-        };
-      }
-      // Fila 5: Encabezados de Columna
-      else if (R === filaIndiceEncabezado) {
+      // Fila de Encabezados de Columna
+      if (R === filaIndiceEncabezado) {
         const esColumnaSemana = C >= 12;
         cell.s = {
           fill: { fgColor: { rgb: esColumnaSemana ? COLORES.AZUL_VIBRANTE : COLORES.NAVY_BORDE } },
@@ -450,7 +483,7 @@ export function exportarPlanTrabajoExcel({
   XLSX.utils.book_append_sheet(wb, wsGantt, "Carta Gantt");
 
   // -------------------------------------------------------------
-  // HOJA 2: RESUMEN EJECUTIVO CON ESTILOS
+  // HOJA 2: RESUMEN EJECUTIVO CON FORMATO COMPLETO Y FUSIÓN DE BANNER
   // -------------------------------------------------------------
   const horasPorDisciplina: Record<string, { tareas: number; horas: number }> = {
     "Base de Datos": { tareas: 0, horas: 0 },
@@ -472,7 +505,7 @@ export function exportarPlanTrabajoExcel({
     ["RESUMEN EJECUTIVO Y PARÁMETROS DEL CRONOGRAMA"],
     [`Proyecto: ${nombreProyecto}`],
     [],
-    ["PARÁMETRO DE PLANIFICACIÓN", "VALOR"],
+    ["PARÁMETRO DE PLANIFICACIÓN", "VALOR REGISTRADO"],
     ["Modelo IA utilizado", modeloIa || "No especificado"],
     ["Total de Tareas Técnicas", tareas.length],
     ["Total Horas Estimadas", `${resultado.totalHoras} hrs`],
@@ -500,6 +533,7 @@ export function exportarPlanTrabajoExcel({
   });
 
   filasResumen.push([]);
+  const filaInicioCalendario = filasResumen.length;
   filasResumen.push(["CALENDARIO DE SEMANAS LABORALES"]);
   filasResumen.push(["Semana", "Rango de Fechas", "Fecha Inicio", "Fecha Fin", "Horas Proyectadas"]);
   semanas.forEach((sem) => {
@@ -507,51 +541,60 @@ export function exportarPlanTrabajoExcel({
   });
 
   const wsResumen = XLSX.utils.aoa_to_sheet(filasResumen);
-  wsResumen["!cols"] = [{ wch: 34 }, { wch: 30 }, { wch: 18 }, { wch: 18 }, { wch: 22 }];
+  wsResumen["!cols"] = [
+    { wch: 38 }, // Parámetro / Disciplina
+    { wch: 30 }, // Valor / N° Tareas
+    { wch: 20 }, // Total Horas
+    { wch: 20 }, // % Esfuerzo
+    { wch: 22 }, // Horas Proyectadas
+  ];
 
-  // Estilos en Hoja Resumen
+  // FUSIONAR RANGOS DE CABECERAS EN RESUMEN EJECUTIVO (Ajusta banners cortados)
+  fusionarYEstilarRango(wsResumen, 0, 0, 0, 4, estiloTituloHero);
+  fusionarYEstilarRango(wsResumen, 1, 0, 1, 4, estiloProyectoHero);
+  fusionarYEstilarRango(wsResumen, 16, 0, 16, 3, {
+    fill: { fgColor: { rgb: COLORES.NAVY_BORDE } },
+    font: { name: "Segoe UI", sz: 10, bold: true, color: { rgb: COLORES.BLANCO } },
+    alignment: { vertical: "center", horizontal: "left", indent: 1 },
+    border: { bottom: { style: "medium", color: { rgb: COLORES.AZUL_CIELO } } },
+  });
+  fusionarYEstilarRango(wsResumen, filaInicioCalendario, 0, filaInicioCalendario, 4, {
+    fill: { fgColor: { rgb: COLORES.NAVY_BORDE } },
+    font: { name: "Segoe UI", sz: 10, bold: true, color: { rgb: COLORES.BLANCO } },
+    alignment: { vertical: "center", horizontal: "left", indent: 1 },
+    border: { bottom: { style: "medium", color: { rgb: COLORES.AZUL_CIELO } } },
+  });
+
+  // Estilar celdas de Resumen
   const rangeResumen = XLSX.utils.decode_range(wsResumen["!ref"] || "A1:A1");
-  for (let R = rangeResumen.s.r; R <= rangeResumen.e.r; ++R) {
+  for (let R = 3; R <= rangeResumen.e.r; ++R) {
     for (let C = rangeResumen.s.c; C <= rangeResumen.e.c; ++C) {
+      if (R === 16 || R === filaInicioCalendario) continue; // Ya estiladas en el merge
       const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
       const cell = wsResumen[cellRef];
       if (!cell) continue;
 
-      if (R === 0) {
-        cell.s = {
-          fill: { fgColor: { rgb: COLORES.NAVY_OSCURO } },
-          font: { name: "Segoe UI", sz: 13, bold: true, color: { rgb: COLORES.AZUL_CIELO } },
-          alignment: { vertical: "center", horizontal: "left" },
-        };
-      } else if (R === 1) {
+      if (R === 3 || R === 17 || R === filaInicioCalendario + 1) {
         cell.s = {
           fill: { fgColor: { rgb: COLORES.NAVY_MEDIO } },
           font: { name: "Segoe UI", sz: 10, bold: true, color: { rgb: COLORES.BLANCO } },
-          alignment: { vertical: "center", horizontal: "left" },
-        };
-      } else if (
-        String(cell.v).includes("DISTRIBUCIÓN") ||
-        String(cell.v).includes("CALENDARIO") ||
-        R === 3 ||
-        R === 17 ||
-        R === 25
-      ) {
-        cell.s = {
-          fill: { fgColor: { rgb: COLORES.NAVY_BORDE } },
-          font: { name: "Segoe UI", sz: 10, bold: true, color: { rgb: COLORES.BLANCO } },
-          alignment: { vertical: "center", horizontal: "left" },
+          alignment: { vertical: "center", horizontal: C >= 1 ? "center" : "left" },
           border: {
             top: { style: "thin", color: { rgb: COLORES.SLATE_700 } },
             bottom: { style: "medium", color: { rgb: COLORES.AZUL_CIELO } },
+            left: { style: "thin", color: { rgb: COLORES.SLATE_700 } },
+            right: { style: "thin", color: { rgb: COLORES.SLATE_700 } },
           },
         };
       } else {
         cell.s = {
-          font: { name: "Segoe UI", sz: 9, color: { rgb: "1E293B" } },
-          alignment: { vertical: "center", horizontal: "left" },
+          font: { name: "Segoe UI", sz: 9, bold: C === 0 && R < 16, color: { rgb: "1E293B" } },
+          alignment: { vertical: "center", horizontal: C >= 1 && R >= 17 ? "center" : "left" },
           border: {
             top: { style: "thin", color: { rgb: COLORES.BORDE_CLARO } },
             bottom: { style: "thin", color: { rgb: COLORES.BORDE_CLARO } },
+            left: { style: "thin", color: { rgb: COLORES.BORDE_CLARO } },
+            right: { style: "thin", color: { rgb: COLORES.BORDE_CLARO } },
           },
         };
       }
@@ -566,7 +609,7 @@ export function exportarPlanTrabajoExcel({
 
 /**
  * =========================================================================
- * 2. EXPORTACIÓN DEL ÁRBOL DE TRAZABILIDAD CON ESTILOS POR CAPA
+ * 2. EXPORTACIÓN DEL ÁRBOL DE TRAZABILIDAD CON FUSIÓN DE RANGOS
  * =========================================================================
  */
 export interface OpcionesExportarTrazabilidad {
@@ -602,17 +645,16 @@ export function exportarArbolTrazabilidadExcel({
   };
 
   // -------------------------------------------------------------
-  // HOJA 1: MATRIZ DE TRAZABILIDAD JERÁRQUICA CON COLORES POR CAPA
+  // HOJA 1: MATRIZ DE TRAZABILIDAD JERÁRQUICA CON RANGOS FUSIONADOS
   // -------------------------------------------------------------
+  const totalColsMatriz = 16;
+  const ultimaColMatrizIdx = totalColsMatriz - 1;
+
   const filasMatriz: (string | number)[][] = [
     ["MATRIZ DE TRAZABILIDAD HÍBRIDA BIDIRECCIONAL - AUDITORÍA DE INGENIERÍA"],
     [`Proyecto: ${nombreProyecto}`],
     [
-      `Fecha de Auditoría: ${hoyStr}`,
-      `Requisitos (RU): ${requisitos.length}`,
-      `Historias (HU): ${historias.length}`,
-      `Tareas (TSK): ${tareas.length}`,
-      `Total Horas: ${tareas.reduce((acc, t) => acc + (t.estimacion_horas || 0), 0)} hrs`,
+      `Fecha de Auditoría: ${hoyStr}   |   Requisitos (RU): ${requisitos.length}   |   Historias (HU): ${historias.length}   |   Tareas (TSK): ${tareas.length}   |   Total Horas: ${tareas.reduce((acc, t) => acc + (t.estimacion_horas || 0), 0)} hrs`,
     ],
     [],
     [
@@ -716,54 +758,64 @@ export function exportarArbolTrazabilidadExcel({
 
   const wsMatriz = XLSX.utils.aoa_to_sheet(filasMatriz);
   wsMatriz["!cols"] = [
-    { wch: 10 }, // ID RU
-    { wch: 32 }, // Nombre RU
-    { wch: 14 }, // Tipo RU
-    { wch: 14 }, // Estabilidad RU
-    { wch: 22 }, // Fuente
-    { wch: 12 }, // ID HU
-    { wch: 32 }, // Titulo HU
-    { wch: 18 }, // Rol
-    { wch: 30 }, // Quiero
-    { wch: 30 }, // Para
-    { wch: 45 }, // Criterios
-    { wch: 12 }, // ID TSK
-    { wch: 34 }, // Titulo TSK
-    { wch: 16 }, // Disciplina
-    { wch: 12 }, // Horas
-    { wch: 40 }, // Descripcion
+    { wch: 12 }, // ID RU
+    { wch: 34 }, // Nombre RU
+    { wch: 15 }, // Tipo RU
+    { wch: 15 }, // Estabilidad RU
+    { wch: 25 }, // Fuente
+    { wch: 13 }, // ID HU
+    { wch: 34 }, // Titulo HU
+    { wch: 20 }, // Rol
+    { wch: 32 }, // Quiero
+    { wch: 32 }, // Para
+    { wch: 48 }, // Criterios
+    { wch: 13 }, // ID TSK
+    { wch: 36 }, // Titulo TSK
+    { wch: 17 }, // Disciplina
+    { wch: 13 }, // Horas
+    { wch: 42 }, // Descripcion
   ];
+
+  wsMatriz["!rows"] = [
+    { hpt: 30 }, // Título
+    { hpt: 22 }, // Proyecto
+    { hpt: 20 }, // Metadatos
+    { hpt: 12 }, // Separador
+    { hpt: 26 }, // Cabeceras
+  ];
+
+  // FUSIONAR BANNERS DE LA MATRIZ (Evita cortes en el título de la matriz)
+  const estiloTituloMatriz = {
+    fill: { fgColor: { rgb: COLORES.NAVY_OSCURO } },
+    font: { name: "Segoe UI", sz: 14, bold: true, color: { rgb: COLORES.AZUL_CIELO } },
+    alignment: { vertical: "center", horizontal: "left", indent: 1 },
+  };
+  const estiloProyectoMatriz = {
+    fill: { fgColor: { rgb: COLORES.NAVY_MEDIO } },
+    font: { name: "Segoe UI", sz: 11, bold: true, color: { rgb: COLORES.BLANCO } },
+    alignment: { vertical: "center", horizontal: "left", indent: 1 },
+  };
+  const estiloMetadatosMatriz = {
+    fill: { fgColor: { rgb: COLORES.SLATE_800 } },
+    font: { name: "Segoe UI", sz: 9, bold: false, color: { rgb: "E2E8F0" } },
+    alignment: { vertical: "center", horizontal: "left", indent: 1 },
+  };
+
+  fusionarYEstilarRango(wsMatriz, 0, 0, 0, ultimaColMatrizIdx, estiloTituloMatriz);
+  fusionarYEstilarRango(wsMatriz, 1, 0, 1, ultimaColMatrizIdx, estiloProyectoMatriz);
+  fusionarYEstilarRango(wsMatriz, 2, 0, 2, ultimaColMatrizIdx, estiloMetadatosMatriz);
 
   // APLICAR FORMATO Y COLORES POR CAPA A LA MATRIZ
   const rangeMatriz = XLSX.utils.decode_range(wsMatriz["!ref"] || "A1:A1");
   const filaCabeceraMatriz = 4;
 
-  for (let R = rangeMatriz.s.r; R <= rangeMatriz.e.r; ++R) {
+  for (let R = filaCabeceraMatriz; R <= rangeMatriz.e.r; ++R) {
     for (let C = rangeMatriz.s.c; C <= rangeMatriz.e.c; ++C) {
       const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
       const cell = wsMatriz[cellRef];
       if (!cell) continue;
 
-      if (R === 0) {
-        cell.s = {
-          fill: { fgColor: { rgb: COLORES.NAVY_OSCURO } },
-          font: { name: "Segoe UI", sz: 14, bold: true, color: { rgb: COLORES.AZUL_CIELO } },
-          alignment: { vertical: "center", horizontal: "left" },
-        };
-      } else if (R === 1) {
-        cell.s = {
-          fill: { fgColor: { rgb: COLORES.NAVY_MEDIO } },
-          font: { name: "Segoe UI", sz: 11, bold: true, color: { rgb: COLORES.BLANCO } },
-          alignment: { vertical: "center", horizontal: "left" },
-        };
-      } else if (R === 2) {
-        cell.s = {
-          fill: { fgColor: { rgb: COLORES.SLATE_800 } },
-          font: { name: "Segoe UI", sz: 9, color: { rgb: "CBD5E1" } },
-          alignment: { vertical: "center", horizontal: "left" },
-        };
-      } else if (R === filaCabeceraMatriz) {
-        // Encabezados con colores diferenciados por cada nivel metodológico
+      if (R === filaCabeceraMatriz) {
         let colorFondo = COLORES.NAVY_BORDE; // RU
         let colorBorde = COLORES.AZUL_CIELO;
 
@@ -787,11 +839,10 @@ export function exportarArbolTrazabilidadExcel({
           },
         };
       } else if (R > filaCabeceraMatriz) {
-        // Celdas de datos con fondo suave por capa
         let fondoCapa = COLORES.BLANCO;
-        if (C <= 4) fondoCapa = "F0F9FF"; // Capa RU (azul hielo muy sutil)
-        else if (C >= 5 && C <= 10) fondoCapa = "FAF5FF"; // Capa HU (púrpura muy suave)
-        else if (C >= 11) fondoCapa = "F0FDF4"; // Capa TSK (verde menta muy suave)
+        if (C <= 4) fondoCapa = "F0F9FF";
+        else if (C >= 5 && C <= 10) fondoCapa = "FAF5FF";
+        else if (C >= 11) fondoCapa = "F0FDF4";
 
         const esCodigo = C === 0 || C === 5 || C === 11;
         const esHoras = C === 14;
@@ -819,11 +870,11 @@ export function exportarArbolTrazabilidadExcel({
   XLSX.utils.book_append_sheet(wb, wsMatriz, "Matriz de Trazabilidad");
 
   // -------------------------------------------------------------
-  // HOJA 2: REQUISITOS (RU) CON ESTILOS
+  // HOJA 2: REQUISITOS (RU) CON FUSIÓN DE BANNER
   // -------------------------------------------------------------
   const filasRu: (string | number)[][] = [
     ["CATÁLOGO DE REQUISITOS DE USUARIO (RU)"],
-    [`Total: ${requisitos.length} requisitos registrados | Proyecto: ${nombreProyecto}`],
+    [`Total: ${requisitos.length} requisitos registrados   |   Proyecto: ${nombreProyecto}`],
     [],
     ["ID RU", "Nombre del Requisito", "Tipo", "Estabilidad", "Fuente / Pliego", "Descripción Detallada"],
   ];
@@ -831,29 +882,20 @@ export function exportarArbolTrazabilidadExcel({
     filasRu.push([r.id, r.nombre, r.tipo, r.estabilidad, r.fuente, r.descripcion]);
   });
   const wsRu = XLSX.utils.aoa_to_sheet(filasRu);
-  wsRu["!cols"] = [{ wch: 10 }, { wch: 32 }, { wch: 16 }, { wch: 16 }, { wch: 24 }, { wch: 60 }];
+  wsRu["!cols"] = [{ wch: 12 }, { wch: 34 }, { wch: 16 }, { wch: 16 }, { wch: 26 }, { wch: 65 }];
+  wsRu["!rows"] = [{ hpt: 30 }, { hpt: 22 }, { hpt: 12 }, { hpt: 26 }];
 
-  // Aplicar estilos a RU
+  fusionarYEstilarRango(wsRu, 0, 0, 0, 5, estiloTituloMatriz);
+  fusionarYEstilarRango(wsRu, 1, 0, 1, 5, estiloProyectoMatriz);
+
   const rangeRu = XLSX.utils.decode_range(wsRu["!ref"] || "A1:A1");
-  for (let R = rangeRu.s.r; R <= rangeRu.e.r; ++R) {
+  for (let R = 3; R <= rangeRu.e.r; ++R) {
     for (let C = rangeRu.s.c; C <= rangeRu.e.c; ++C) {
       const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
       const cell = wsRu[cellRef];
       if (!cell) continue;
 
-      if (R === 0) {
-        cell.s = {
-          fill: { fgColor: { rgb: COLORES.NAVY_OSCURO } },
-          font: { name: "Segoe UI", sz: 13, bold: true, color: { rgb: COLORES.AZUL_CIELO } },
-          alignment: { vertical: "center", horizontal: "left" },
-        };
-      } else if (R === 1) {
-        cell.s = {
-          fill: { fgColor: { rgb: COLORES.NAVY_MEDIO } },
-          font: { name: "Segoe UI", sz: 10, bold: true, color: { rgb: COLORES.BLANCO } },
-          alignment: { vertical: "center", horizontal: "left" },
-        };
-      } else if (R === 3) {
+      if (R === 3) {
         cell.s = {
           fill: { fgColor: { rgb: COLORES.NAVY_BORDE } },
           font: { name: "Segoe UI", sz: 10, bold: true, color: { rgb: COLORES.BLANCO } },
@@ -876,11 +918,11 @@ export function exportarArbolTrazabilidadExcel({
   XLSX.utils.book_append_sheet(wb, wsRu, "1. Requisitos (RU)");
 
   // -------------------------------------------------------------
-  // HOJA 3: HISTORIAS DE USUARIO (HU)
+  // HOJA 3: HISTORIAS DE USUARIO (HU) CON FUSIÓN DE BANNER
   // -------------------------------------------------------------
   const filasHu: (string | number)[][] = [
     ["CATÁLOGO DE HISTORIAS DE USUARIO (HU)"],
-    [`Total: ${historias.length} historias registradas | Proyecto: ${nombreProyecto}`],
+    [`Total: ${historias.length} historias registradas   |   Proyecto: ${nombreProyecto}`],
     [],
     ["ID HU", "RU Origen", "Título", "Como (Rol)", "Quiero", "Para", "Criterios de Aceptación"],
   ];
@@ -891,29 +933,31 @@ export function exportarArbolTrazabilidadExcel({
     filasHu.push([h.id, h.rf_origen, h.titulo, h.rol, h.quiero, h.para, criterios]);
   });
   const wsHu = XLSX.utils.aoa_to_sheet(filasHu);
-  wsHu["!cols"] = [{ wch: 12 }, { wch: 12 }, { wch: 32 }, { wch: 20 }, { wch: 35 }, { wch: 35 }, { wch: 50 }];
+  wsHu["!cols"] = [{ wch: 14 }, { wch: 14 }, { wch: 34 }, { wch: 22 }, { wch: 36 }, { wch: 36 }, { wch: 55 }];
+  wsHu["!rows"] = [{ hpt: 30 }, { hpt: 22 }, { hpt: 12 }, { hpt: 26 }];
 
-  // Estilos a HU
+  const estiloTituloHu = {
+    fill: { fgColor: { rgb: "312E81" } },
+    font: { name: "Segoe UI", sz: 14, bold: true, color: { rgb: "C7D2FE" } },
+    alignment: { vertical: "center", horizontal: "left", indent: 1 },
+  };
+  const estiloProyectoHu = {
+    fill: { fgColor: { rgb: "3730A3" } },
+    font: { name: "Segoe UI", sz: 11, bold: true, color: { rgb: COLORES.BLANCO } },
+    alignment: { vertical: "center", horizontal: "left", indent: 1 },
+  };
+
+  fusionarYEstilarRango(wsHu, 0, 0, 0, 6, estiloTituloHu);
+  fusionarYEstilarRango(wsHu, 1, 0, 1, 6, estiloProyectoHu);
+
   const rangeHu = XLSX.utils.decode_range(wsHu["!ref"] || "A1:A1");
-  for (let R = rangeHu.s.r; R <= rangeHu.e.r; ++R) {
+  for (let R = 3; R <= rangeHu.e.r; ++R) {
     for (let C = rangeHu.s.c; C <= rangeHu.e.c; ++C) {
       const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
       const cell = wsHu[cellRef];
       if (!cell) continue;
 
-      if (R === 0) {
-        cell.s = {
-          fill: { fgColor: { rgb: "312E81" } },
-          font: { name: "Segoe UI", sz: 13, bold: true, color: { rgb: "C7D2FE" } },
-          alignment: { vertical: "center", horizontal: "left" },
-        };
-      } else if (R === 1) {
-        cell.s = {
-          fill: { fgColor: { rgb: "3730A3" } },
-          font: { name: "Segoe UI", sz: 10, bold: true, color: { rgb: COLORES.BLANCO } },
-          alignment: { vertical: "center", horizontal: "left" },
-        };
-      } else if (R === 3) {
+      if (R === 3) {
         cell.s = {
           fill: { fgColor: { rgb: "4338CA" } },
           font: { name: "Segoe UI", sz: 10, bold: true, color: { rgb: COLORES.BLANCO } },
@@ -936,11 +980,11 @@ export function exportarArbolTrazabilidadExcel({
   XLSX.utils.book_append_sheet(wb, wsHu, "2. Historias (HU)");
 
   // -------------------------------------------------------------
-  // HOJA 4: TAREAS TÉCNICAS (TSK)
+  // HOJA 4: TAREAS TÉCNICAS (TSK) CON FUSIÓN DE BANNER
   // -------------------------------------------------------------
   const filasTsk: (string | number)[][] = [
     ["CATÁLOGO DE TAREAS TÉCNICAS (TSK)"],
-    [`Total: ${tareas.length} tareas registradas | Proyecto: ${nombreProyecto}`],
+    [`Total: ${tareas.length} tareas registradas   |   Proyecto: ${nombreProyecto}`],
     [],
     ["ID Tarea", "HU Origen", "Título Tarea Técnica", "Disciplina", "Estimación (Horas)", "Descripción Técnica"],
   ];
@@ -948,29 +992,31 @@ export function exportarArbolTrazabilidadExcel({
     filasTsk.push([t.id, t.hu_origen, t.titulo, t.tipo, t.estimacion_horas, t.descripcion || "-"]);
   });
   const wsTsk = XLSX.utils.aoa_to_sheet(filasTsk);
-  wsTsk["!cols"] = [{ wch: 12 }, { wch: 12 }, { wch: 35 }, { wch: 18 }, { wch: 18 }, { wch: 60 }];
+  wsTsk["!cols"] = [{ wch: 14 }, { wch: 14 }, { wch: 36 }, { wch: 18 }, { wch: 18 }, { wch: 65 }];
+  wsTsk["!rows"] = [{ hpt: 30 }, { hpt: 22 }, { hpt: 12 }, { hpt: 26 }];
 
-  // Estilos a TSK
+  const estiloTituloTsk = {
+    fill: { fgColor: { rgb: "064E3B" } },
+    font: { name: "Segoe UI", sz: 14, bold: true, color: { rgb: "A7F3D0" } },
+    alignment: { vertical: "center", horizontal: "left", indent: 1 },
+  };
+  const estiloProyectoTsk = {
+    fill: { fgColor: { rgb: "065F46" } },
+    font: { name: "Segoe UI", sz: 11, bold: true, color: { rgb: COLORES.BLANCO } },
+    alignment: { vertical: "center", horizontal: "left", indent: 1 },
+  };
+
+  fusionarYEstilarRango(wsTsk, 0, 0, 0, 5, estiloTituloTsk);
+  fusionarYEstilarRango(wsTsk, 1, 0, 1, 5, estiloProyectoTsk);
+
   const rangeTsk = XLSX.utils.decode_range(wsTsk["!ref"] || "A1:A1");
-  for (let R = rangeTsk.s.r; R <= rangeTsk.e.r; ++R) {
+  for (let R = 3; R <= rangeTsk.e.r; ++R) {
     for (let C = rangeTsk.s.c; C <= rangeTsk.e.c; ++C) {
       const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
       const cell = wsTsk[cellRef];
       if (!cell) continue;
 
-      if (R === 0) {
-        cell.s = {
-          fill: { fgColor: { rgb: "064E3B" } },
-          font: { name: "Segoe UI", sz: 13, bold: true, color: { rgb: "A7F3D0" } },
-          alignment: { vertical: "center", horizontal: "left" },
-        };
-      } else if (R === 1) {
-        cell.s = {
-          fill: { fgColor: { rgb: "065F46" } },
-          font: { name: "Segoe UI", sz: 10, bold: true, color: { rgb: COLORES.BLANCO } },
-          alignment: { vertical: "center", horizontal: "left" },
-        };
-      } else if (R === 3) {
+      if (R === 3) {
         cell.s = {
           fill: { fgColor: { rgb: "047857" } },
           font: { name: "Segoe UI", sz: 10, bold: true, color: { rgb: COLORES.BLANCO } },
@@ -998,7 +1044,7 @@ export function exportarArbolTrazabilidadExcel({
   XLSX.utils.book_append_sheet(wb, wsTsk, "3. Tareas (TSK)");
 
   // -------------------------------------------------------------
-  // HOJA 5: MÉTRICAS Y COBERTURA DE AUDITORÍA
+  // HOJA 5: MÉTRICAS Y COBERTURA DE AUDITORÍA CON FUSIÓN DE BANNER
   // -------------------------------------------------------------
   const totalHoras = tareas.reduce((acc, t) => acc + (t.estimacion_horas || 0), 0);
   const ratioHuRu = requisitos.length > 0 ? (historias.length / requisitos.length).toFixed(2) : "0";
@@ -1019,28 +1065,20 @@ export function exportarArbolTrazabilidadExcel({
     ["Estado de Trazabilidad", "100% Cobertura Bidireccional Verificada"],
   ];
   const wsMetricas = XLSX.utils.aoa_to_sheet(filasMetricas);
-  wsMetricas["!cols"] = [{ wch: 38 }, { wch: 35 }];
+  wsMetricas["!cols"] = [{ wch: 42 }, { wch: 38 }];
+  wsMetricas["!rows"] = [{ hpt: 30 }, { hpt: 22 }, { hpt: 12 }, { hpt: 26 }];
+
+  fusionarYEstilarRango(wsMetricas, 0, 0, 0, 1, estiloTituloMatriz);
+  fusionarYEstilarRango(wsMetricas, 1, 0, 1, 1, estiloProyectoMatriz);
 
   const rangeMetricas = XLSX.utils.decode_range(wsMetricas["!ref"] || "A1:A1");
-  for (let R = rangeMetricas.s.r; R <= rangeMetricas.e.r; ++R) {
+  for (let R = 3; R <= rangeMetricas.e.r; ++R) {
     for (let C = rangeMetricas.s.c; C <= rangeMetricas.e.c; ++C) {
       const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
       const cell = wsMetricas[cellRef];
       if (!cell) continue;
 
-      if (R === 0) {
-        cell.s = {
-          fill: { fgColor: { rgb: COLORES.NAVY_OSCURO } },
-          font: { name: "Segoe UI", sz: 13, bold: true, color: { rgb: COLORES.AZUL_CIELO } },
-          alignment: { vertical: "center", horizontal: "left" },
-        };
-      } else if (R === 1) {
-        cell.s = {
-          fill: { fgColor: { rgb: COLORES.NAVY_MEDIO } },
-          font: { name: "Segoe UI", sz: 10, bold: true, color: { rgb: COLORES.BLANCO } },
-          alignment: { vertical: "center", horizontal: "left" },
-        };
-      } else if (R === 3) {
+      if (R === 3) {
         cell.s = {
           fill: { fgColor: { rgb: COLORES.NAVY_BORDE } },
           font: { name: "Segoe UI", sz: 10, bold: true, color: { rgb: COLORES.BLANCO } },
