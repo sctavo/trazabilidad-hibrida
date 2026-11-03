@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import type {
   ParametrosCalendarizacion,
   TareaItem,
@@ -29,6 +29,8 @@ import {
   PlusIcon,
   SaveIcon,
   FileSpreadsheetIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
 } from "./Icons";
 
 interface GanttPreviewModalProps {
@@ -84,6 +86,18 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
     diasPorSemana: 5,
     modalidad: "secuencial",
   });
+
+  // Control para desplegar/ocultar el panel de configuración (despeja la pantalla)
+  const [mostrarConfiguracion, setMostrarConfiguracion] = useState(false);
+
+  // Referencia para desplazamiento horizontal suave del cronograma
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleScrollSemanas = (offset: number) => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: offset, behavior: "smooth" });
+    }
+  };
 
   // Estado para personalización y total flexibilidad del usuario
   const [tareasPersonalizadas, setTareasPersonalizadas] = useState<TareaCalendarizada[] | null>(null);
@@ -350,14 +364,14 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-3 sm:p-5 overflow-y-auto font-sans text-slate-100">
-      <div className="bg-[#131d35] border border-slate-700/80 rounded-2xl w-full max-w-7xl max-h-[94vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto font-sans text-slate-100">
+      <div className="bg-[#131d35] border border-slate-700/80 rounded-2xl w-full max-w-[98vw] xl:max-w-7xl h-[94vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         
         {/* Cabecera del Modal */}
-        <div className="p-5 sm:p-6 border-b border-slate-800 bg-[#0f172a]/60 flex items-start justify-between gap-4">
-          <div className="space-y-1">
+        <div className="px-5 py-3.5 border-b border-slate-800 bg-[#0f172a]/80 flex items-center justify-between gap-4">
+          <div className="space-y-0.5">
             <div className="flex items-center gap-2">
-              <CalendarIcon className="w-5 h-5 text-indigo-400" />
+              <CalendarIcon className="w-4 h-4 text-indigo-400" />
               <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-950/80 text-indigo-300 border border-indigo-800/80">
                 Plan de Trabajo & Carta Gantt Interactiva
               </span>
@@ -367,15 +381,27 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
                 </span>
               )}
             </div>
-            <h2 className="text-xl font-bold text-white tracking-tight">
+            <h2 className="text-lg font-bold text-white tracking-tight">
               {nombreProyecto}
             </h2>
-            <p className="text-xs text-slate-400">
-              Personaliza libremente la asignación de semanas, desplaza tareas o ajusta horas antes de exportar a Excel.
-            </p>
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setMostrarConfiguracion((prev) => !prev)}
+              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-sky-300 font-semibold text-xs border border-slate-700 transition flex items-center gap-1.5 shadow-sm"
+              title="Mostrar u ocultar los parámetros de planificación para despejar la pantalla"
+            >
+              <SlidersIcon className="w-3.5 h-3.5 text-sky-400" />
+              <span>{mostrarConfiguracion ? "Ocultar Configuración" : "Configurar Plan"}</span>
+              {mostrarConfiguracion ? (
+                <ChevronUpIcon className="w-3.5 h-3.5" />
+              ) : (
+                <ChevronDownIcon className="w-3.5 h-3.5" />
+              )}
+            </button>
+
             <button
               type="button"
               onClick={handleExportarExcelClick}
@@ -397,13 +423,190 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
           </div>
         </div>
 
-        {/* Panel Interactivo de Parámetros de Calendarización */}
-        <div className="p-4 sm:p-5 bg-[#0f172a]/40 border-b border-slate-800 space-y-4">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <span className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
-              <SlidersIcon className="w-4 h-4 text-sky-400" />
-              <span>Parámetros Base de Planificación</span>
-            </span>
+        {/* Panel Desplegable de Parámetros de Calendarización */}
+        {mostrarConfiguracion ? (
+          <div className="p-4 bg-[#0f172a]/80 border-b border-slate-800 space-y-3 animate-in fade-in slide-in-from-top-1 duration-150">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div
+                onClick={() => setMostrarConfiguracion(false)}
+                className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition select-none"
+                title="Hacer clic para ocultar"
+              >
+                <SlidersIcon className="w-4 h-4 text-sky-400" />
+                <span className="text-xs font-bold text-slate-200 uppercase tracking-wider">
+                  Parámetros Base de Planificación
+                </span>
+                <span className="text-[10px] text-sky-400 bg-sky-950/80 px-2 py-0.5 rounded-full border border-sky-800">
+                  Visible
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {tareasPersonalizadas && (
+                  <button
+                    type="button"
+                    onClick={handleRestablecerAutomatico}
+                    className="px-2.5 py-1 text-[11px] font-semibold text-amber-300 hover:text-white bg-amber-950/60 hover:bg-amber-900/80 border border-amber-800/80 rounded-lg transition flex items-center gap-1.5"
+                  >
+                    <RotateCcwIcon className="w-3.5 h-3.5" />
+                    <span>Restablecer Plan</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleAgregarSemana}
+                  className="px-2.5 py-1 text-[11px] font-semibold text-sky-300 hover:text-white bg-blue-950/60 hover:bg-blue-900/80 border border-blue-800/80 rounded-lg transition flex items-center gap-1.5"
+                  title="Ampliar el horizonte del cronograma añadiendo una semana extra"
+                >
+                  <PlusIcon className="w-3.5 h-3.5" />
+                  <span>+ Agregar Semana</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMostrarConfiguracion(false)}
+                  className="px-3 py-1 text-xs font-bold text-sky-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg transition flex items-center gap-1.5 shadow-sm"
+                  title="Ocultar este panel para despejar la vista de la Carta Gantt"
+                >
+                  <ChevronUpIcon className="w-3.5 h-3.5" />
+                  <span>Ocultar Configuración</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+              {/* 1. Fecha de Inicio */}
+              <div className="space-y-1 bg-[#131d35] p-2.5 rounded-xl border border-slate-800">
+                <label className="font-semibold text-slate-300 flex items-center gap-1.5">
+                  <CalendarIcon className="w-3.5 h-3.5 text-sky-400" />
+                  <span>Fecha de Inicio</span>
+                </label>
+                <input
+                  type="date"
+                  value={params.fechaInicio}
+                  onChange={(e) =>
+                    setParams((prev) => ({ ...prev, fechaInicio: e.target.value }))
+                  }
+                  className="w-full text-xs bg-[#0f172a] border border-slate-700 rounded-lg px-2.5 py-1.5 font-medium text-white focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              {/* 2. Horas por Jornada Diaria (Libertad total: 1 a 20 hrs/día) */}
+              <div className="space-y-1 bg-[#131d35] p-2.5 rounded-xl border border-slate-800">
+                <div className="flex items-center justify-between">
+                  <label className="font-semibold text-slate-300 flex items-center gap-1.5">
+                    <ClockIcon className="w-3.5 h-3.5 text-teal-400" />
+                    <span>Jornada Diaria</span>
+                  </label>
+                  <span className="font-mono font-bold text-[11px] text-teal-300">
+                    {params.horasPorDia}h / día
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={params.horasPorDia}
+                    onChange={(e) => {
+                      const val = Math.max(1, Math.min(20, Number(e.target.value) || 1));
+                      setParams((prev) => ({ ...prev, horasPorDia: val }));
+                    }}
+                    className="w-14 text-xs bg-[#0f172a] border border-slate-700 rounded-lg px-1.5 py-1.5 font-bold text-white focus:outline-none focus:border-blue-500 text-center"
+                    title="Horas de trabajo por jornada diaria (1 a 20)"
+                  />
+                  <div className="flex items-center gap-1 flex-1 overflow-x-auto">
+                    {[4, 6, 8, 10, 12].map((preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => setParams((prev) => ({ ...prev, horasPorDia: preset }))}
+                        className={`px-1.5 py-1 rounded text-[10px] font-semibold transition ${
+                          params.horasPorDia === preset
+                            ? "bg-teal-500/25 text-teal-300 border border-teal-500/50"
+                            : "bg-[#0f172a] text-slate-400 hover:text-white border border-slate-800"
+                        }`}
+                      >
+                        {preset}h
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Días Laborales por Semana (Libertad total: 1 a 7 días) */}
+              <div className="space-y-1 bg-[#131d35] p-2.5 rounded-xl border border-slate-800">
+                <div className="flex items-center justify-between">
+                  <label className="font-semibold text-slate-300 flex items-center gap-1.5">
+                    <CalendarIcon className="w-3.5 h-3.5 text-purple-400" />
+                    <span>Días Laborales</span>
+                  </label>
+                  <span className="font-mono font-bold text-[11px] text-purple-300">
+                    {params.diasPorSemana} {params.diasPorSemana === 1 ? "día" : "días"}/sem
+                  </span>
+                </div>
+                <select
+                  value={params.diasPorSemana}
+                  onChange={(e) =>
+                    setParams((prev) => ({
+                      ...prev,
+                      diasPorSemana: Math.max(1, Math.min(7, Number(e.target.value) || 5)),
+                    }))
+                  }
+                  className="w-full text-xs bg-[#0f172a] border border-slate-700 rounded-lg px-2.5 py-1.5 font-medium text-white focus:outline-none focus:border-blue-500"
+                >
+                  <option value={1}>1 día / sem (Solo Lunes)</option>
+                  <option value={2}>2 días / sem (Lunes y Martes)</option>
+                  <option value={3}>3 días / sem (Lunes a Miércoles)</option>
+                  <option value={4}>4 días / sem (Lunes a Jueves)</option>
+                  <option value={5}>5 días / sem (Lunes a Viernes - Estándar)</option>
+                  <option value={6}>6 días / sem (Lunes a Sábado)</option>
+                  <option value={7}>7 días / sem (Lunes a Domingo - Continuo)</option>
+                </select>
+              </div>
+
+              {/* 4. Modalidad de Asignación */}
+              <div className="space-y-1 bg-[#131d35] p-2.5 rounded-xl border border-slate-800">
+                <label className="font-semibold text-slate-300 flex items-center gap-1.5">
+                  <SlidersIcon className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Estrategia Base</span>
+                </label>
+                <select
+                  value={params.modalidad}
+                  onChange={(e) =>
+                    setParams((prev) => ({
+                      ...prev,
+                      modalidad: e.target.value as "secuencial" | "disciplina",
+                    }))
+                  }
+                  className="w-full text-xs bg-[#0f172a] border border-slate-700 rounded-lg px-2.5 py-1.5 font-medium text-white focus:outline-none focus:border-blue-500"
+                >
+                  <option value="secuencial">Secuencial Ágil por HU</option>
+                  <option value="disciplina">Paralelo (Frontend / Backend)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* Barra Compacta de Configuración (cuando está oculto el panel grande) */
+          <div className="px-5 py-2 bg-[#0f172a]/50 border-b border-slate-800 flex items-center justify-between text-xs flex-wrap gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                <SlidersIcon className="w-3.5 h-3.5 text-sky-400" />
+                <span>Configuración Activa:</span>
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-slate-300 font-medium text-[11px]">
+                Inicio: <strong className="text-white">{params.fechaInicio}</strong>
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-teal-950/70 border border-teal-800/80 text-teal-300 font-medium text-[11px]">
+                {params.horasPorDia}h / día
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-purple-950/70 border border-purple-800/80 text-purple-300 font-medium text-[11px]">
+                {params.diasPorSemana} días / sem
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-amber-950/70 border border-amber-800/80 text-amber-300 font-medium text-[11px]">
+                {params.modalidad === "secuencial" ? "Secuencial por HU" : "Paralelo"}
+              </span>
+            </div>
+
             <div className="flex items-center gap-2">
               {tareasPersonalizadas && (
                 <button
@@ -412,7 +615,7 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
                   className="px-2.5 py-1 text-[11px] font-semibold text-amber-300 hover:text-white bg-amber-950/60 hover:bg-amber-900/80 border border-amber-800/80 rounded-lg transition flex items-center gap-1.5"
                 >
                   <RotateCcwIcon className="w-3.5 h-3.5" />
-                  <span>Restablecer Plan Automático</span>
+                  <span>Restablecer Plan</span>
                 </button>
               )}
               <button
@@ -424,190 +627,83 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
                 <PlusIcon className="w-3.5 h-3.5" />
                 <span>+ Agregar Semana</span>
               </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-            {/* 1. Fecha de Inicio */}
-            <div className="space-y-1 bg-[#131d35] p-3 rounded-xl border border-slate-800">
-              <label className="font-semibold text-slate-300 flex items-center gap-1.5">
-                <CalendarIcon className="w-3.5 h-3.5 text-sky-400" />
-                <span>Fecha de Inicio</span>
-              </label>
-              <input
-                type="date"
-                value={params.fechaInicio}
-                onChange={(e) =>
-                  setParams((prev) => ({ ...prev, fechaInicio: e.target.value }))
-                }
-                className="w-full text-xs bg-[#0f172a] border border-slate-700 rounded-lg px-2.5 py-1.5 font-medium text-white focus:outline-none focus:border-blue-500"
-              />
-            </div>
-
-            {/* 2. Horas por Jornada Diaria (Libertad total: 1 a 20 hrs/día) */}
-            <div className="space-y-1 bg-[#131d35] p-3 rounded-xl border border-slate-800">
-              <div className="flex items-center justify-between">
-                <label className="font-semibold text-slate-300 flex items-center gap-1.5">
-                  <ClockIcon className="w-3.5 h-3.5 text-teal-400" />
-                  <span>Jornada Diaria</span>
-                </label>
-                <span className="font-mono font-bold text-[11px] text-teal-300">
-                  {params.horasPorDia}h / día
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min={1}
-                  max={20}
-                  value={params.horasPorDia}
-                  onChange={(e) => {
-                    const val = Math.max(1, Math.min(20, Number(e.target.value) || 1));
-                    setParams((prev) => ({ ...prev, horasPorDia: val }));
-                  }}
-                  className="w-16 text-xs bg-[#0f172a] border border-slate-700 rounded-lg px-2 py-1.5 font-bold text-white focus:outline-none focus:border-blue-500 text-center"
-                  title="Horas de trabajo por jornada diaria (1 a 20)"
-                />
-                <div className="flex items-center gap-1 flex-1 overflow-x-auto">
-                  {[4, 6, 8, 10, 12].map((preset) => (
-                    <button
-                      key={preset}
-                      type="button"
-                      onClick={() => setParams((prev) => ({ ...prev, horasPorDia: preset }))}
-                      className={`px-1.5 py-1 rounded text-[10px] font-semibold transition ${
-                        params.horasPorDia === preset
-                          ? "bg-teal-500/25 text-teal-300 border border-teal-500/50"
-                          : "bg-[#0f172a] text-slate-400 hover:text-white border border-slate-800"
-                      }`}
-                    >
-                      {preset}h
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* 3. Días Laborales por Semana (Libertad total: 1 a 7 días) */}
-            <div className="space-y-1 bg-[#131d35] p-3 rounded-xl border border-slate-800">
-              <div className="flex items-center justify-between">
-                <label className="font-semibold text-slate-300 flex items-center gap-1.5">
-                  <CalendarIcon className="w-3.5 h-3.5 text-purple-400" />
-                  <span>Días Laborales</span>
-                </label>
-                <span className="font-mono font-bold text-[11px] text-purple-300">
-                  {params.diasPorSemana} {params.diasPorSemana === 1 ? "día" : "días"}/sem
-                </span>
-              </div>
-              <select
-                value={params.diasPorSemana}
-                onChange={(e) =>
-                  setParams((prev) => ({
-                    ...prev,
-                    diasPorSemana: Math.max(1, Math.min(7, Number(e.target.value) || 5)),
-                  }))
-                }
-                className="w-full text-xs bg-[#0f172a] border border-slate-700 rounded-lg px-2.5 py-1.5 font-medium text-white focus:outline-none focus:border-blue-500"
+              <button
+                type="button"
+                onClick={() => setMostrarConfiguracion(true)}
+                className="px-2.5 py-1 text-[11px] font-semibold text-sky-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg transition flex items-center gap-1"
               >
-                <option value={1}>1 día / sem (Solo Lunes)</option>
-                <option value={2}>2 días / sem (Lunes y Martes)</option>
-                <option value={3}>3 días / sem (Lunes a Miércoles)</option>
-                <option value={4}>4 días / sem (Lunes a Jueves)</option>
-                <option value={5}>5 días / sem (Lunes a Viernes - Estándar)</option>
-                <option value={6}>6 días / sem (Lunes a Sábado)</option>
-                <option value={7}>7 días / sem (Lunes a Domingo - Continuo)</option>
-              </select>
-            </div>
-
-            {/* 4. Modalidad de Asignación */}
-            <div className="space-y-1 bg-[#131d35] p-3 rounded-xl border border-slate-800">
-              <label className="font-semibold text-slate-300 flex items-center gap-1.5">
-                <SlidersIcon className="w-3.5 h-3.5 text-amber-400" />
-                <span>Estrategia Base</span>
-              </label>
-              <select
-                value={params.modalidad}
-                onChange={(e) =>
-                  setParams((prev) => ({
-                    ...prev,
-                    modalidad: e.target.value as "secuencial" | "disciplina",
-                  }))
-                }
-                className="w-full text-xs bg-[#0f172a] border border-slate-700 rounded-lg px-2.5 py-1.5 font-medium text-white focus:outline-none focus:border-blue-500"
-              >
-                <option value="secuencial">Secuencial Ágil por HU</option>
-                <option value="disciplina">Paralelo (Frontend / Backend)</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* Barra Ejecutiva de Resultados y Métricas del Cronograma */}
-        {resultado && (
-          <div className="px-5 sm:px-6 py-3 bg-[#0f172a]/60 border-b border-slate-800 grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
-            <div className="space-y-0.5">
-              <span className="text-[10px] font-bold text-slate-500 uppercase block tracking-wider">
-                Fecha Inicio
-              </span>
-              <span className="font-bold text-slate-200 text-xs">
-                {formatearFechaCorta(parseFecha(resultado.fechaInicioProyecto), true)}
-              </span>
-            </div>
-
-            <div className="space-y-0.5">
-              <span className="text-[10px] font-bold text-slate-500 uppercase block tracking-wider">
-                Fin Estimado
-              </span>
-              <span className="font-bold text-sky-400 text-xs">
-                {formatearFechaCorta(parseFecha(resultado.fechaFinProyecto), true)}
-              </span>
-            </div>
-
-            <div className="space-y-0.5">
-              <span className="text-[10px] font-bold text-slate-500 uppercase block tracking-wider">
-                Total Semanas
-              </span>
-              <span className="font-bold text-white text-sm">
-                {resultado.totalSemanas} semanas
-              </span>
-            </div>
-
-            <div className="space-y-0.5">
-              <span className="text-[10px] font-bold text-slate-500 uppercase block tracking-wider">
-                Esfuerzo Total
-              </span>
-              <span className="font-bold text-emerald-400 text-xs">
-                {resultado.totalHoras} hrs ({resultado.totalDiasHabiles} días hábiles)
-              </span>
-            </div>
-
-            <div className="space-y-0.5">
-              <span className="text-[10px] font-bold text-slate-500 uppercase block tracking-wider">
-                Ritmo Promedio
-              </span>
-              <span className="font-semibold text-slate-300 text-xs">
-                ~{resultado.horasPorSemanaPromedio} hrs / semana
-              </span>
+                <span>Ajustar Parámetros</span>
+                <ChevronDownIcon className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
         )}
 
-        {/* Guía de Flexibilidad para el Usuario */}
-        <div className="px-5 sm:px-6 py-2 bg-blue-950/30 border-b border-blue-900/40 flex items-center justify-between text-[11px] text-sky-300 flex-wrap gap-2">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-sky-400 animate-ping"></span>
-            <span>
-              <strong>Flexibilidad Total:</strong> Puedes mover cualquier tarea usando las flechas <strong>◀ ▶</strong>, haciendo <strong>clic en cualquier celda de la semana</strong> en la grilla, o usando <strong>✎ Editar</strong>.
-            </span>
+        {/* Barra Ejecutiva de Resultados y Controles de Navegación Horizontal */}
+        {resultado && (
+          <div className="px-5 py-2 bg-[#0f172a]/80 border-b border-slate-800 flex items-center justify-between flex-wrap gap-3 text-xs">
+            <div className="flex items-center gap-4 sm:gap-6 flex-wrap">
+              <div>
+                <span className="text-[10px] text-slate-400 block font-semibold">Inicio:</span>
+                <span className="font-bold text-white text-xs">
+                  {formatearFechaCorta(parseFecha(resultado.fechaInicioProyecto), true)}
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 block font-semibold">Fin Estimado:</span>
+                <span className="font-bold text-sky-400 text-xs">
+                  {formatearFechaCorta(parseFecha(resultado.fechaFinProyecto), true)}
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 block font-semibold">Total Semanas:</span>
+                <span className="font-bold text-white text-xs">
+                  {resultado.totalSemanas} semanas
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 block font-semibold">Esfuerzo:</span>
+                <span className="font-bold text-emerald-400 text-xs">
+                  {resultado.totalHoras} hrs ({resultado.totalDiasHabiles} días)
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 block font-semibold">Ritmo:</span>
+                <span className="font-semibold text-slate-300 text-xs">
+                  ~{resultado.horasPorSemanaPromedio} hrs/sem
+                </span>
+              </div>
+            </div>
+
+            {/* Controles de Navegación Horizontal de Semanas */}
+            <div className="flex items-center gap-2 bg-[#131d35] px-2.5 py-1 rounded-xl border border-slate-700 shadow-sm">
+              <span className="text-[11px] font-bold text-slate-300">
+                Semanas (1-{resultado.totalSemanas}):
+              </span>
+              <button
+                type="button"
+                onClick={() => handleScrollSemanas(-320)}
+                className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white transition border border-slate-700 flex items-center gap-1 text-[11px]"
+                title="Desplazar la vista hacia semanas anteriores (◀)"
+              >
+                <ArrowLeftIcon className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Anterior</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleScrollSemanas(320)}
+                className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white transition border border-slate-700 flex items-center gap-1 text-[11px]"
+                title="Desplazar la vista hacia semanas siguientes (▶)"
+              >
+                <span className="hidden sm:inline">Siguiente</span>
+                <ArrowRightIcon className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
-          {mensajeGuardado && (
-            <span className="text-emerald-300 font-bold bg-emerald-950/80 px-2.5 py-0.5 rounded-lg border border-emerald-700 animate-in fade-in">
-              {mensajeGuardado}
-            </span>
-          )}
-        </div>
+        )}
 
         {/* Barra de Filtros y Búsqueda */}
-        <div className="px-5 sm:px-6 py-2.5 bg-[#0f172a]/40 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="px-5 py-2 bg-[#0f172a]/50 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2.5 text-xs">
           {/* Filtros por Disciplina */}
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-[11px] font-semibold text-slate-400 mr-1">Filtrar:</span>
@@ -629,21 +725,34 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
             )}
           </div>
 
-          {/* Buscador */}
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Buscar tarea o código..."
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              className="text-xs bg-[#0f172a] border border-slate-700 rounded-lg pl-7 pr-3 py-1 w-44 sm:w-56 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-            />
-            <SearchIcon className="absolute left-2 top-2 text-slate-500 w-3.5 h-3.5" />
+          <div className="flex items-center gap-3">
+            <span className="text-[11px] text-sky-400 hidden lg:inline">
+              💡 Usa <strong>◀ ▶</strong>, haz clic en cualquier semana o pulsa <strong>✎</strong> para editar tareas.
+            </span>
+            {mensajeGuardado && (
+              <span className="text-emerald-300 font-bold bg-emerald-950/80 px-2 py-0.5 rounded-lg border border-emerald-700 text-[11px]">
+                {mensajeGuardado}
+              </span>
+            )}
+            {/* Buscador */}
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Buscar tarea o código..."
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                className="text-xs bg-[#0f172a] border border-slate-700 rounded-lg pl-7 pr-3 py-1 w-44 sm:w-56 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+              />
+              <SearchIcon className="absolute left-2 top-2 text-slate-500 w-3.5 h-3.5" />
+            </div>
           </div>
         </div>
 
-        {/* Previsualización de la Carta Gantt (Grid Tabla + Cronograma) */}
-        <div className="flex-1 overflow-auto bg-[#0f172a]/80 p-4 sm:p-6">
+        {/* Previsualización de la Carta Gantt: Contenedor con Desplazamiento Horizontal y Columnas Sticky */}
+        <div
+          ref={scrollContainerRef}
+          className="flex-1 overflow-x-auto overflow-y-auto bg-[#0b1120] p-3 sm:p-4 scroll-smooth"
+        >
           {cargando && (
             <div className="py-24 text-center">
               <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500 mx-auto mb-3"></div>
@@ -661,28 +770,33 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
           )}
 
           {!cargando && !error && resultado && (
-            <div className="min-w-[950px] border border-slate-800 rounded-xl overflow-hidden bg-[#131d35] shadow-xl">
+            <div className="w-max min-w-full border border-slate-800 rounded-xl bg-[#131d35] shadow-2xl">
               
-              {/* Encabezado del Gantt: Columnas de Información + Columnas de Semanas */}
-              <div className="grid grid-cols-12 bg-[#0f172a] border-b border-slate-800 text-[11px] font-semibold text-slate-300 sticky top-0 z-20">
-                {/* Lado Izquierdo: Info de la Tarea (5 columnas) */}
-                <div className="col-span-3 p-2.5 border-r border-slate-800 flex items-center justify-between">
-                  <span>Código, Disciplina & Ajustes</span>
-                  <span className="text-[10px] text-slate-500">Mover / Editar</span>
-                </div>
-                <div className="col-span-2 p-2.5 border-r border-slate-800">
-                  Tarea & HU Origen
-                </div>
-                <div className="col-span-1 p-2.5 border-r border-slate-800 text-center">
-                  Carga
+              {/* Encabezado Fijo del Gantt: Columnas de Información (Sticky Izquierda) + Semanas */}
+              <div className="flex bg-[#0f172a] border-b border-slate-800 text-[11px] font-bold text-slate-300 sticky top-0 z-30 shadow-sm">
+                
+                {/* Columna 1 Sticky: Código & Disciplina */}
+                <div className="w-[210px] min-w-[210px] shrink-0 p-2.5 border-r border-slate-800 sticky left-0 z-40 bg-[#0f172a] flex items-center justify-between">
+                  <span>Código & Disciplina</span>
+                  <span className="text-[10px] text-slate-500 font-normal">Ajustes</span>
                 </div>
 
-                {/* Lado Derecho: Semanas */}
-                <div className="col-span-6 flex divide-x divide-slate-800 overflow-x-auto">
+                {/* Columna 2 Sticky: Tarea & HU Origen */}
+                <div className="w-[240px] min-w-[240px] shrink-0 p-2.5 border-r border-slate-800 sticky left-[210px] z-40 bg-[#0f172a] flex items-center">
+                  <span>Tarea & HU Origen</span>
+                </div>
+
+                {/* Columna 3 Sticky: Carga (con sombra divisoria al desplazarse) */}
+                <div className="w-[80px] min-w-[80px] shrink-0 p-2.5 border-r-2 border-slate-700 sticky left-[450px] z-40 bg-[#0f172a] shadow-[4px_0_12px_rgba(0,0,0,0.5)] text-center">
+                  <span>Carga</span>
+                </div>
+
+                {/* Columnas de Semanas del Cronograma */}
+                <div className="flex divide-x divide-slate-800">
                   {resultado.semanas.map((sem) => (
                     <div
                       key={sem.numero}
-                      className="flex-1 min-w-[90px] p-2 text-center bg-[#0f172a]"
+                      className="w-[105px] min-w-[105px] shrink-0 p-2 text-center bg-[#0f172a]"
                     >
                       <span className="block text-[11px] font-bold text-sky-400">
                         {sem.etiqueta}
@@ -701,7 +815,7 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
               {/* Filas de Tareas del Gantt */}
               <div className="divide-y divide-slate-800/80 text-xs">
                 {tareasFiltradas.length === 0 ? (
-                  <div className="py-12 text-center text-slate-500 text-xs">
+                  <div className="py-16 text-center text-slate-500 text-xs">
                     No hay tareas que coincidan con los filtros seleccionados.
                   </div>
                 ) : (
@@ -711,11 +825,11 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
                     return (
                       <div
                         key={tarea.id}
-                        className="grid grid-cols-12 hover:bg-slate-800/40 transition-colors items-center group"
+                        className="flex hover:bg-slate-800/50 transition-colors items-center group"
                       >
-                        {/* Columna 1: Código, Disciplina y Controles Rápidos de Movimiento */}
-                        <div className="col-span-3 p-2 border-r border-slate-800 flex items-center justify-between gap-1.5 flex-wrap">
-                          <div className="flex items-center gap-1.5 flex-wrap">
+                        {/* Columna 1 Sticky: Código, Disciplina y Controles Rápidos */}
+                        <div className="w-[210px] min-w-[210px] shrink-0 p-2 border-r border-slate-800 flex items-center justify-between gap-1 sticky left-0 z-20 bg-[#131d35] group-hover:bg-[#1a2544]">
+                          <div className="flex items-center gap-1 flex-wrap">
                             <span className="font-mono font-bold text-[11px] px-1.5 py-0.5 rounded bg-slate-800 text-white border border-slate-700">
                               {tarea.id}
                             </span>
@@ -726,8 +840,8 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
                             </span>
                           </div>
 
-                          {/* Botones de flexibilidad rápida */}
-                          <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition">
+                          {/* Controles de movimiento rápido */}
+                          <div className="flex items-center gap-0.5 opacity-90 group-hover:opacity-100 transition">
                             <button
                               type="button"
                               onClick={() => handleDesplazarSemana(tarea.id, -1)}
@@ -737,8 +851,8 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
                             >
                               <ArrowLeftIcon className="w-3 h-3" />
                             </button>
-                            <span className="text-[10px] font-mono text-slate-300 px-1 font-bold">
-                              S{tarea.semanaInicio}{tarea.semanaFin > tarea.semanaInicio ? `-S${tarea.semanaFin}` : ""}
+                            <span className="text-[10px] font-mono text-slate-300 px-1 font-bold whitespace-nowrap">
+                              S{tarea.semanaInicio}{tarea.semanaFin > tarea.semanaInicio ? `-${tarea.semanaFin}` : ""}
                             </span>
                             <button
                               type="button"
@@ -759,8 +873,8 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
                           </div>
                         </div>
 
-                        {/* Columna 2: Título y HU Origen */}
-                        <div className="col-span-2 p-2.5 border-r border-slate-800 min-w-0">
+                        {/* Columna 2 Sticky: Título y HU Origen */}
+                        <div className="w-[240px] min-w-[240px] shrink-0 p-2.5 border-r border-slate-800 sticky left-[210px] z-20 bg-[#131d35] group-hover:bg-[#1a2544] min-w-0">
                           <span
                             className="font-semibold text-slate-200 block truncate cursor-pointer hover:text-sky-300"
                             title={tarea.titulo}
@@ -773,9 +887,9 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
                           </span>
                         </div>
 
-                        {/* Columna 3: Horas y Días Hábiles */}
+                        {/* Columna 3 Sticky: Horas y Días Hábiles */}
                         <div
-                          className="col-span-1 p-2 border-r border-slate-800 text-center cursor-pointer hover:bg-slate-800/60 transition"
+                          className="w-[80px] min-w-[80px] shrink-0 p-2 border-r-2 border-slate-700 sticky left-[450px] z-20 bg-[#131d35] group-hover:bg-[#1a2544] shadow-[4px_0_12px_rgba(0,0,0,0.5)] text-center cursor-pointer"
                           onClick={() => setTareaEnEdicion(tarea)}
                           title="Hacer clic para editar horas estimadas"
                         >
@@ -787,8 +901,8 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
                           </span>
                         </div>
 
-                        {/* Columna 4 a 12: Grilla Visual de Línea de Tiempo (Semanas) */}
-                        <div className="col-span-6 flex divide-x divide-slate-800/60 h-full py-1.5 px-0.5 relative">
+                        {/* Columnas de Semanas: Línea de Tiempo del Cronograma */}
+                        <div className="flex divide-x divide-slate-800/60 h-full py-1.5 px-0.5 relative">
                           {resultado.semanas.map((sem) => {
                             const estaEnSemana =
                               tarea.semanaInicio <= sem.numero &&
@@ -801,7 +915,7 @@ export const GanttPreviewModal: React.FC<GanttPreviewModalProps> = ({
                               <div
                                 key={sem.numero}
                                 onClick={() => handleMoverTareaSemana(tarea.id, sem.numero)}
-                                className={`flex-1 min-w-[90px] h-9 flex items-center justify-center px-0.5 relative transition cursor-pointer ${
+                                className={`w-[105px] min-w-[105px] shrink-0 h-9 flex items-center justify-center px-0.5 relative transition cursor-pointer ${
                                   !estaEnSemana
                                     ? "hover:bg-sky-500/10 hover:border hover:border-dashed hover:border-sky-500/40 rounded"
                                     : ""
