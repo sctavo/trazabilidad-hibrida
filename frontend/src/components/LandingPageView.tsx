@@ -128,7 +128,7 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({
             <span>Plataforma de Trazabilidad Híbrida para Ingeniería de Software</span>
           </div>
           <div className="text-[11px] text-slate-500 text-center sm:text-right">
-            Memoria de Tesis · Ingeniería Civil Informática · {new Date().getFullYear()}
+            Memoria de Tesis · ICC · {new Date().getFullYear()}
           </div>
         </div>
       </footer>
