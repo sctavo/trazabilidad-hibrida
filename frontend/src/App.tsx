@@ -1,22 +1,40 @@
-import { useState } from "react";
-import { LoginView } from "./components/LoginView";
+import { useState, useEffect } from "react";
+import { LandingPageView } from "./components/LandingPageView";
 import { DashboardView } from "./components/DashboardView";
 import { SeleccionModeloView } from "./components/SeleccionModeloView";
 import { IngestaView } from "./components/IngestaView";
 import { RequisitosView } from "./components/RequisitosView";
 import { HistoriasUsuarioView } from "./components/HistoriasUsuarioView";
 import { TareasView } from "./components/TareasView";
-import type { RequisitoItem, HistoriaUsuarioItem, TareaItem } from "./types";
+import { FolderIcon, SaveIcon, LockIcon } from "./components/Icons";
+import type { RequisitoItem, HistoriaUsuarioItem, TareaItem, Usuario } from "./types";
 import { MODELOS_IA_CATALOGO } from "./types";
 
 export default function App() {
   const [token, setToken] = useState<string | null>(localStorage.getItem("token"));
-  const [usuario, setUsuario] = useState<{ id: string; nombre: string; email: string } | null>(
+  const [usuario, setUsuario] = useState<Usuario | null>(
     localStorage.getItem("usuario") ? JSON.parse(localStorage.getItem("usuario")!) : null
   );
 
+  // Tokens pasados por URL al hacer clic en enlaces de correo
+  const [tokenVerificacionUrl, setTokenVerificacionUrl] = useState<string | null>(null);
+  const [tokenResetUrl, setTokenResetUrl] = useState<string | null>(null);
+  const [tokenBajaUrl, setTokenBajaUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const vEmail = params.get("verificar_email");
+    const rToken = params.get("reset_token");
+    const bToken = params.get("baja_token");
+
+    if (vEmail) setTokenVerificacionUrl(vEmail);
+    if (rToken) setTokenResetUrl(rToken);
+    if (bToken) setTokenBajaUrl(bToken);
+  }, []);
+
   // Control de vista: "dashboard" (pantalla de bienvenida y proyectos) vs "workspace" (pipeline de 4 etapas)
   const [vistaActual, setVistaActual] = useState<"dashboard" | "workspace">("dashboard");
+  const [tabDashboardInicial, setTabDashboardInicial] = useState<"proyectos" | "plan_trabajo">("proyectos");
 
   const [proyectoId, setProyectoId] = useState<string | null>(null);
   const [nombreProyecto, setNombreProyecto] = useState("Especificación de Requisitos");
@@ -40,7 +58,11 @@ export default function App() {
   const [cargandoTareas, setCargandoTareas] = useState(false);
   const [guardandoBD, setGuardandoBD] = useState(false);
 
-  const handleGuardarProyectoBD = async (silencioso = false): Promise<boolean> => {
+  const handleGuardarProyectoBD = async (
+    silencioso = false,
+    etapaOverride?: number,
+    tareasOverride?: TareaItem[]
+  ): Promise<boolean> => {
     if (!token) return false;
     setGuardandoBD(true);
     try {
@@ -56,12 +78,12 @@ export default function App() {
         },
         body: JSON.stringify({
           nombre: nombreProyecto,
-          etapa_actual: etapaActual,
+          etapa_actual: etapaOverride !== undefined ? etapaOverride : etapaActual,
           texto_documento: textoDocumento,
           modelo_ia: modeloIa,
           requisitos,
           historias_usuario: historias,
-          tareas,
+          tareas: tareasOverride || tareas,
         }),
       });
 
@@ -69,7 +91,7 @@ export default function App() {
       const data = await resp.json();
       setProyectoId(data.id);
       if (!silencioso) {
-        alert("✓ Proyecto guardado en PostgreSQL exitosamente.");
+        alert("Proyecto guardado exitosamente.");
       }
       return true;
     } catch (err: any) {
@@ -83,7 +105,6 @@ export default function App() {
   };
 
   const handleCerrarSesion = async () => {
-    // Si el usuario está trabajando en un proyecto y hay datos cargados, se auto-guarda antes de cerrar sesión
     if (
       vistaActual === "workspace" &&
       (textoDocumento.trim() || requisitos.length > 0 || historias.length > 0 || tareas.length > 0)
@@ -163,10 +184,10 @@ export default function App() {
   };
 
   const handleVolverAlDashboardConAutoGuardado = async () => {
-    // Si el proyecto tiene contenido trabajado, auto-guardar en la BD antes de ir al dashboard
     if (textoDocumento.trim() || requisitos.length > 0 || historias.length > 0 || tareas.length > 0) {
       await handleGuardarProyectoBD(true);
     }
+    setTabDashboardInicial("proyectos");
     setVistaActual("dashboard");
   };
 
@@ -199,11 +220,9 @@ export default function App() {
 
   // --- BORRADO EN CASCADA: RU -> HUs -> Tareas ---
   const handleEliminarRequisitoCascade = (ruId: string) => {
-    // 1. Encontrar las HUs hijas
     const husAEliminar = historias.filter((h) => h.rf_origen === ruId);
     const huIdsAEliminar = new Set(husAEliminar.map((h) => h.id));
 
-    // 2. Podar las HUs
     const historiasRestantes = historias.filter((h) => h.rf_origen !== ruId);
     const historiasNormalizadas = historiasRestantes.map((h, i) => ({
       ...h,
@@ -211,7 +230,6 @@ export default function App() {
     }));
     setHistorias(historiasNormalizadas);
 
-    // 3. Podar las Tareas nietas
     const tareasRestantes = tareas.filter((t) => !huIdsAEliminar.has(t.hu_origen));
     const tareasNormalizadas = tareasRestantes.map((t, i) => ({
       ...t,
@@ -219,7 +237,6 @@ export default function App() {
     }));
     setTareas(tareasNormalizadas);
 
-    // 4. Limpiar sets de estados
     setRuModificadosIds((prev) => {
       const nuevo = new Set(prev);
       nuevo.delete(ruId);
@@ -329,7 +346,6 @@ export default function App() {
   const handleHistoriasAprobadas = async (aprobadas: HistoriaUsuarioItem[]) => {
     setHistorias(aprobadas);
 
-    // Caso A: Primera generación completa de tareas
     if (tareas.length === 0) {
       setCargandoTareas(true);
       try {
@@ -353,7 +369,6 @@ export default function App() {
       return;
     }
 
-    // Caso B: Ya existen tareas, pero hay HUs nuevas que no tienen ninguna tarea asociada
     const husSinTareas = aprobadas.filter((hu) => !tareas.some((t) => t.hu_origen === hu.id));
 
     if (husSinTareas.length > 0) {
@@ -369,7 +384,6 @@ export default function App() {
         const data = await response.json();
         const nuevasTareas: TareaItem[] = data.tareas;
 
-        // Combinar preservando el orden jerárquico por hu_origen
         const todasTareas = [...tareas, ...nuevasTareas];
         const ordenadas = todasTareas.sort((a, b) => {
           const idxA = aprobadas.findIndex((h) => h.id === a.hu_origen);
@@ -394,14 +408,27 @@ export default function App() {
     }
   };
 
-  if (!token) {
+  const handlePerfilActualizado = (usuarioActualizado: Usuario) => {
+    setUsuario(usuarioActualizado);
+    localStorage.setItem("usuario", JSON.stringify(usuarioActualizado));
+  };
+
+  const hayTokenAccionUrl = Boolean(tokenVerificacionUrl || tokenResetUrl || tokenBajaUrl);
+
+  if (!token || hayTokenAccionUrl) {
     return (
-      <LoginView
+      <LandingPageView
+        tokenVerificacionUrl={tokenVerificacionUrl}
+        tokenResetUrl={tokenResetUrl}
+        tokenBajaUrl={tokenBajaUrl}
         onLoginExitoso={(jwt, usr) => {
           setToken(jwt);
           setUsuario(usr);
           localStorage.setItem("token", jwt);
           localStorage.setItem("usuario", JSON.stringify(usr));
+          setTokenVerificacionUrl(null);
+          setTokenResetUrl(null);
+          setTokenBajaUrl(null);
           setVistaActual("dashboard");
         }}
       />
@@ -414,22 +441,24 @@ export default function App() {
       <DashboardView
         token={token}
         usuario={usuario}
+        tabInicial={tabDashboardInicial}
         onAbrirProyecto={handleAbrirProyectoDesdeDashboard}
         onCrearNuevoProyecto={handleCrearNuevoDesdeDashboard}
         onCerrarSesion={handleCerrarSesion}
+        onPerfilActualizado={handlePerfilActualizado}
       />
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 py-6 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[#0f172a] text-slate-100 py-6 px-4 sm:px-6 lg:px-8 font-sans selection:bg-blue-600 selection:text-white">
       <div className="max-w-4xl mx-auto space-y-6">
         
-        {/* Cabecera */}
-        <header className="flex flex-col sm:flex-row items-center justify-between bg-white p-4 rounded-xl border border-slate-200 shadow-xs gap-3">
+        {/* Cabecera del Workspace */}
+        <header className="flex flex-col sm:flex-row items-center justify-between bg-[#131d35] p-4 rounded-xl border border-slate-800 shadow-xl gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs">
-              {usuario?.nombre.slice(0, 2).toUpperCase() || "AN"}
+            <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-md">
+              {(usuario?.apodo || usuario?.nombre || "AN").slice(0, 2).toUpperCase()}
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -437,7 +466,7 @@ export default function App() {
                   type="text"
                   value={nombreProyecto}
                   onChange={(e) => setNombreProyecto(e.target.value)}
-                  className="font-bold text-xs text-slate-800 border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none"
+                  className="font-bold text-xs text-white bg-transparent border-b border-transparent hover:border-slate-700 focus:border-blue-500 focus:outline-none transition"
                 />
                 {(() => {
                   const m = MODELOS_IA_CATALOGO.find((x) => x.id === modeloIa) || MODELOS_IA_CATALOGO[0];
@@ -445,19 +474,19 @@ export default function App() {
                     <span
                       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border ${
                         m.esRecomendado
-                          ? "bg-blue-50 border-blue-200 text-blue-700"
-                          : "bg-purple-50 border-purple-200 text-purple-700"
+                          ? "bg-blue-950/60 border-blue-800/70 text-sky-400"
+                          : "bg-purple-950/60 border-purple-800/70 text-purple-300"
                       }`}
                       title={m.descripcion}
                     >
-                      <span>{m.icono}</span>
+                      <span className="font-mono text-[9px] text-slate-400">{m.icono}</span>
                       <span>{m.nombre}</span>
                       {m.esRecomendado ? (
-                        <span className="text-[8px] bg-blue-100 text-blue-800 px-1 rounded-sm uppercase tracking-wider font-bold">
+                        <span className="text-[8px] bg-blue-900/80 text-sky-300 px-1 rounded uppercase tracking-wider font-bold">
                           Default
                         </span>
                       ) : (
-                        <span className="text-[8px] bg-purple-100 text-purple-800 px-1 rounded-sm uppercase tracking-wider font-bold">
+                        <span className="text-[8px] bg-purple-900/80 text-purple-300 px-1 rounded uppercase tracking-wider font-bold">
                           Exp
                         </span>
                       )}
@@ -465,7 +494,9 @@ export default function App() {
                   );
                 })()}
               </div>
-              <span className="text-[11px] text-slate-400 block">Analista: {usuario?.email}</span>
+              <span className="text-[11px] text-slate-400 block">
+                Analista: {usuario?.apodo ? `@${usuario.apodo} (${usuario.nombre})` : usuario?.email}
+              </span>
             </div>
           </div>
 
@@ -473,66 +504,71 @@ export default function App() {
             <button
               onClick={handleVolverAlDashboardConAutoGuardado}
               disabled={guardandoBD}
-              className="text-xs font-semibold px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition flex items-center gap-1.5 disabled:opacity-50"
-              title="Guardar automáticamente y volver al Dashboard de Mis Proyectos"
+              className="text-xs font-semibold px-3 py-1.5 bg-[#0f172a] hover:bg-slate-800 text-slate-300 border border-slate-700/80 rounded-lg transition flex items-center gap-1.5 disabled:opacity-50"
+              title="Guardar y volver a Mis Proyectos"
             >
-              <span>📁</span>
+              <FolderIcon className="w-3.5 h-3.5 text-sky-400" />
               <span>{guardandoBD ? "Guardando..." : "Mis Proyectos"}</span>
             </button>
             <button
               onClick={() => handleGuardarProyectoBD(false)}
               disabled={guardandoBD}
-              className="text-xs font-semibold px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition disabled:opacity-50"
+              className="text-xs font-semibold px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition shadow-xs flex items-center gap-1.5 disabled:opacity-50"
             >
-              {guardandoBD ? "Guardando..." : "💾 Guardar"}
+              <SaveIcon className="w-3.5 h-3.5" />
+              <span>{guardandoBD ? "Guardando..." : "Guardar"}</span>
             </button>
             <button
               onClick={handleCerrarSesion}
               disabled={guardandoBD}
-              className="text-xs font-semibold px-3 py-1.5 border border-slate-300 text-slate-600 hover:text-slate-900 rounded-lg transition disabled:opacity-50"
-              title="Guarda automáticamente tus avances y cierra la sesión"
+              className="text-xs font-semibold px-3 py-1.5 bg-transparent border border-slate-700 text-slate-400 hover:text-white hover:border-slate-600 rounded-lg transition disabled:opacity-50"
+              title="Guardar y cerrar sesión"
             >
               {guardandoBD ? "Guardando..." : "Cerrar sesión"}
             </button>
           </div>
         </header>
 
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">
-            ReqGen 
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Transformación secuencial estricta: Documento → Requisitos (RU) → Historias de Usuario → Tareas.
-          </p>
+        {/* Título y estado del Workspace */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-white tracking-tight">
+              ReqGen Workspace
+            </h1>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Pipeline de derivación de artefactos de ingeniería de software.
+            </p>
+          </div>
         </div>
 
+        {/* Estados de Carga / Generación */}
         {cargandoRequisitos && (
-          <div className="bg-white border border-slate-200 rounded-xl p-12 text-center shadow-xs">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <h3 className="text-sm font-semibold text-slate-800">
+          <div className="bg-[#131d35] border border-slate-800 rounded-xl p-12 text-center shadow-xl">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <h3 className="text-sm font-semibold text-slate-200">
               Extrayendo Requisitos de Usuario con {MODELOS_IA_CATALOGO.find(m => m.id === modeloIa)?.nombre || "IA"}...
             </h3>
-            <p className="text-xs text-slate-400 mt-1">Con mitigación automática activa</p>
+            <p className="text-xs text-slate-500 mt-1">Estructurando catálogo de especificación RU</p>
           </div>
         )}
 
         {cargandoHu && (
-          <div className="bg-white border border-slate-200 rounded-xl p-12 text-center shadow-xs">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-600 mx-auto mb-4"></div>
-            <h3 className="text-sm font-semibold text-slate-800">
+          <div className="bg-[#131d35] border border-slate-800 rounded-xl p-12 text-center shadow-xl">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-500 mx-auto mb-4"></div>
+            <h3 className="text-sm font-semibold text-slate-200">
               Derivando Historias de Usuario con {MODELOS_IA_CATALOGO.find(m => m.id === modeloIa)?.nombre || "IA"}...
             </h3>
-            <p className="text-xs text-slate-400 mt-1">Con mitigación automática activa</p>
+            <p className="text-xs text-slate-500 mt-1">Generando historias de usuario con criterios de aceptación</p>
           </div>
         )}
 
         {cargandoTareas && (
-          <div className="bg-white border border-slate-200 rounded-xl p-12 text-center shadow-xs">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-            <h3 className="text-sm font-semibold text-slate-800">
+          <div className="bg-[#131d35] border border-slate-800 rounded-xl p-12 text-center shadow-xl">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-500 mx-auto mb-4"></div>
+            <h3 className="text-sm font-semibold text-slate-200">
               Derivando Tareas Técnicas con {MODELOS_IA_CATALOGO.find(m => m.id === modeloIa)?.nombre || "IA"}...
             </h3>
-            <p className="text-xs text-slate-400 mt-1">Con mitigación automática activa</p>
+            <p className="text-xs text-slate-500 mt-1">Desglosando backlog técnico y estimaciones de esfuerzo</p>
           </div>
         )}
 
@@ -585,9 +621,12 @@ export default function App() {
                 huSincronizadasIds={huSincronizadasIds}
                 modeloIa={modeloIa}
                 onVolver={() => setEtapaActual(3)}
-                onConfirmar={(aprobadas) => {
+                onConfirmar={async (aprobadas) => {
                   setTareas(aprobadas);
-                  alert("Plan de tareas técnicas aprobado.");
+                  setEtapaActual(4);
+                  await handleGuardarProyectoBD(true, 4, aprobadas);
+                  setTabDashboardInicial("plan_trabajo");
+                  setVistaActual("dashboard");
                 }}
                 onTareasActualizadas={(actualizadas) => setTareas(actualizadas)}
                 onMarcarHuSincronizada={handleMarcarHuSincronizada}
@@ -596,62 +635,77 @@ export default function App() {
           </>
         )}
 
-        {/* Pipeline de Navegación */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 pt-4 border-t border-slate-200 text-xs">
+        {/* Pipeline de Navegación Inferior */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 pt-4 border-t border-slate-800 text-xs">
           <button
             onClick={() => setEtapaActual(0)}
-            className={`p-2.5 bg-white text-left rounded-lg border shadow-xs transition ${
-              etapaActual === 0 ? "border-blue-500 ring-1 ring-blue-500" : "border-slate-200 hover:border-slate-300"
+            className={`p-2.5 rounded-lg border text-left transition ${
+              etapaActual === 0
+                ? "bg-blue-950/30 border-blue-500 ring-1 ring-blue-500"
+                : "bg-[#131d35] border-slate-800 hover:border-slate-700"
             }`}
           >
             <div className="flex items-center justify-between">
-              <span className="font-bold text-blue-600 block">Paso 0</span>
+              <span className="font-bold text-sky-400 block text-[11px]">Paso 0</span>
               {(requisitos.length > 0 || proyectoId !== null) && (
-                <span className="text-[10px] text-slate-400" title="Modelo fijado para este proyecto">🔒</span>
+                <LockIcon className="w-3 h-3 text-slate-500" title="Modelo fijado para este proyecto" />
               )}
             </div>
-            <span className="font-medium text-slate-800">Motor IA</span>
+            <span className="font-medium text-slate-200">Motor IA</span>
           </button>
+
           <button
             onClick={() => setEtapaActual(1)}
-            className={`p-2.5 bg-white text-left rounded-lg border shadow-xs transition ${
-              etapaActual === 1 ? "border-blue-500 ring-1 ring-blue-500" : "border-slate-200 hover:border-slate-300"
+            className={`p-2.5 rounded-lg border text-left transition ${
+              etapaActual === 1
+                ? "bg-blue-950/30 border-blue-500 ring-1 ring-blue-500"
+                : "bg-[#131d35] border-slate-800 hover:border-slate-700"
             }`}
           >
-            <span className="font-bold text-blue-600 block">Etapa 1</span>
-            <span className="font-medium text-slate-800">Documento</span>
+            <span className="font-bold text-sky-400 block text-[11px]">Etapa 1</span>
+            <span className="font-medium text-slate-200">Documento</span>
           </button>
+
           <button
             onClick={() => requisitos.length > 0 && setEtapaActual(2)}
             disabled={requisitos.length === 0}
-            className={`p-2.5 bg-white text-left rounded-lg border shadow-xs transition disabled:opacity-40 ${
-              etapaActual === 2 ? "border-blue-500 ring-1 ring-blue-500" : "border-slate-200 hover:border-slate-300"
+            className={`p-2.5 rounded-lg border text-left transition disabled:opacity-40 ${
+              etapaActual === 2
+                ? "bg-blue-950/30 border-blue-500 ring-1 ring-blue-500"
+                : "bg-[#131d35] border-slate-800 hover:border-slate-700"
             }`}
           >
-            <span className="font-bold text-blue-600 block">Etapa 2</span>
-            <span className="font-medium text-slate-800">Requisitos (RU)</span>
+            <span className="font-bold text-sky-400 block text-[11px]">Etapa 2</span>
+            <span className="font-medium text-slate-200">Requisitos (RU)</span>
           </button>
+
           <button
             onClick={() => historias.length > 0 && setEtapaActual(3)}
             disabled={historias.length === 0}
-            className={`p-2.5 bg-white text-left rounded-lg border shadow-xs transition disabled:opacity-40 ${
-              etapaActual === 3 ? "border-purple-500 ring-1 ring-purple-500" : "border-slate-200 hover:border-slate-300"
+            className={`p-2.5 rounded-lg border text-left transition disabled:opacity-40 ${
+              etapaActual === 3
+                ? "bg-purple-950/30 border-purple-500 ring-1 ring-purple-500"
+                : "bg-[#131d35] border-slate-800 hover:border-slate-700"
             }`}
           >
-            <span className="font-bold text-purple-600 block">Etapa 3</span>
-            <span className="font-medium text-slate-800">Historias Usuario</span>
+            <span className="font-bold text-purple-400 block text-[11px]">Etapa 3</span>
+            <span className="font-medium text-slate-200">Historias Usuario</span>
           </button>
+
           <button
             onClick={() => tareas.length > 0 && setEtapaActual(4)}
             disabled={tareas.length === 0}
-            className={`p-2.5 bg-white text-left rounded-lg border shadow-xs transition disabled:opacity-40 ${
-              etapaActual === 4 ? "border-indigo-500 ring-1 ring-indigo-500" : "border-slate-200 hover:border-slate-300"
+            className={`p-2.5 rounded-lg border text-left transition disabled:opacity-40 ${
+              etapaActual === 4
+                ? "bg-emerald-950/30 border-emerald-500 ring-1 ring-emerald-500"
+                : "bg-[#131d35] border-slate-800 hover:border-slate-700"
             }`}
           >
-            <span className="font-bold text-indigo-600 block">Etapa 4</span>
-            <span className="font-medium text-slate-800">Tareas Técnicas</span>
+            <span className="font-bold text-emerald-400 block text-[11px]">Etapa 4</span>
+            <span className="font-medium text-slate-200">Tareas Técnicas</span>
           </button>
         </div>
+
       </div>
     </div>
   );

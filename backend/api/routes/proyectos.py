@@ -37,6 +37,7 @@ def listar_proyectos_usuario(
             "total_requisitos": len(p.requisitos) if p.requisitos else 0,
             "total_historias": len(p.historias_usuario) if p.historias_usuario else 0,
             "total_tareas": len(p.tareas) if p.tareas else 0,
+            "total_horas": sum(t.estimacion or 0 for t in p.tareas) if p.tareas else 0,
         }
         for p in proyectos
     ]
