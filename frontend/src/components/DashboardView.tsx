@@ -245,18 +245,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-3 text-right">
-              <div className="w-9 h-9 rounded-full bg-blue-600/20 border border-blue-500/30 text-sky-400 flex items-center justify-center font-bold text-xs">
-                {(usuario?.apodo || usuario?.nombre || "AN").slice(0, 2).toUpperCase()}
-              </div>
-              <div className="hidden sm:block">
-                <span className="text-xs font-bold text-white block leading-tight">
-                  {usuario?.apodo ? `@${usuario.apodo}` : usuario?.nombre || "Analista"}
-                </span>
-                <span className="text-[11px] text-slate-400 block leading-tight">
-                  {usuario?.email}
-                </span>
-              </div>
+            <div className="hidden sm:block text-right">
+              <span className="text-xs font-bold text-white block leading-tight">
+                {usuario?.apodo ? `@${usuario.apodo}` : usuario?.nombre || "Analista"}
+              </span>
+              <span className="text-[11px] text-slate-400 block leading-tight">
+                {usuario?.email}
+              </span>
             </div>
 
             <button
